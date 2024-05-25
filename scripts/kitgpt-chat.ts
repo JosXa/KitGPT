@@ -10,6 +10,8 @@ import { model, systemPrompt } from "../lib/cache"
 import configureSystemPrompt from "../lib/configureSystemPrompt"
 import { PROMPT_WIDTH } from "../lib/settings"
 
+setWindowPosition("kit.exe", "Kit", 0, 0)
+
 await env("OPENAI_API_KEY", {
   hint: `Grab a key from <a href="https://platform.openai.com/account/api-keys">here</a>`,
 })
@@ -127,20 +129,13 @@ await refreshable(async ({ refresh }) => {
         bar: "left",
       },
       {
-        name: "Continue Script",
-
-        key: `${cmd}+enter`,
-        onPress: () => submit(""),
-        bar: "right",
-      },
-      {
         name: "Clear",
-        key: `${cmd}+alt+backspace`,
+        key: `${cmd}+shift+backspace`,
         onPress: async () => {
           await reset()
           refresh()
         },
-        bar: "right",
+        bar: "left",
       },
       {
         name: "System Prompt",
@@ -153,6 +148,18 @@ await refreshable(async ({ refresh }) => {
         visible: true,
       },
     ],
+    actions: [
+      // {
+      //   name: "System Prompt",
+      //   shortcut: `${cmd}+p`,
+      //   onAction: async () => {
+      //     await configureSystemPrompt()
+      //     refresh()
+      //   },
+      //   visible: false,
+      // },
+    ],
+    alwaysOnTop: false,
     css: `
 div.kit-mbox > ul, ol {
   margin-block-start: 0 !important;
