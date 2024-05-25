@@ -1,14 +1,17 @@
 // noinspection JSArrowFunctionBracesCanBeRemoved
 
+import { refreshable } from "@josxa/kit-utils"
 import type { LanguageModel } from "ai"
-import { model } from "./cache"
+import type { EnvConfig } from "../../../../.kit/types/kit"
+import { PROMPT_WIDTH } from "./settings"
+import { model } from "./store"
 import { typedObjectEntries } from "./typed-objects"
 
 const PROVIDERS = {
   "openai.chat": {
     name: "OpenAI",
     getModel: async (modelId: string) => (await import("@ai-sdk/openai")).openai(modelId),
-    // https://github.com/vercel/ai/blob/main/packages/openai/src/openai-chat-settings.ts
+    // Keep in sync with https://github.com/vercel/ai/blob/main/packages/openai/src/openai-chat-settings.ts
     knownModels: [
       "gpt-4o",
       "gpt-4o-2024-05-13",
@@ -29,60 +32,66 @@ const PROVIDERS = {
       "gpt-3.5-turbo-0613",
       "gpt-3.5-turbo-16k-0613",
     ],
-    authenticate: async () => {
+    ensureAuthenticated: async (props) => {
       await env("OPENAI_API_KEY", {
         hint: `Grab a key from <a href="https://platform.openai.com/account/api-keys">here</a>`,
+        ...props,
       })
     },
   },
   "anthropic.messages": {
     name: "Anthropic",
     getModel: async (modelId: string) => (await import("@ai-sdk/anthropic")).anthropic(modelId),
-    // https://github.com/vercel/ai/blob/main/packages/anthropic/src/anthropic-messages-settings.ts
+    // Keep in sync with https://github.com/vercel/ai/blob/main/packages/anthropic/src/anthropic-messages-settings.ts
     knownModels: ["claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307"],
-    authenticate: async () => {
+    ensureAuthenticated: async (props) => {
       await env("ANTHROPIC_API_KEY", {
         hint: `Grab a key from <a href="https://console.anthropic.com/settings/keys">here</a>`,
+        ...props,
       })
     },
   },
   "google.generative-ai": {
     name: "Google",
     getModel: async (modelId: string) => (await import("@ai-sdk/google")).google(modelId),
-    // https://github.com/vercel/ai/blob/main/packages/google/src/google-generative-ai-settings.ts
+    // Keep in sync with https://github.com/vercel/ai/blob/main/packages/google/src/google-generative-ai-settings.ts
     knownModels: [
       "models/gemini-1.5-flash-latest",
       "models/gemini-1.5-pro-latest",
       "models/gemini-pro",
       "models/gemini-pro-vision",
     ],
-    authenticate: async () => {
-      await env("GOOGLE_API_KEY", {
+    ensureAuthenticated: async (props) => {
+      await env("GOOGLE_GENERATIVE_AI_API_KEY", {
         hint: `Grab a key from <a href="https://aistudio.google.com/app/apikey">here</a>`,
+        ...props,
       })
     },
   },
   "google-vertex": {
     name: "Google Vertex",
     getModel: async (modelId: string) => (await import("@ai-sdk/google-vertex")).vertex(modelId),
-    // https://github.com/vercel/ai/blob/main/packages/google-vertex/src/google-vertex-settings.ts
+    // Keep in sync with https://github.com/vercel/ai/blob/main/packages/google-vertex/src/google-vertex-settings.ts
     knownModels: ["gemini-1.0-pro", "gemini-1.0-pro-vision"],
-    authenticate: async () => {
+    ensureAuthenticated: async (props) => {
       await env("GOOGLE_VERTEX_API_KEY", {
         hint: "Enter the Google Vertex API key",
+        ...props,
       })
       await env("GOOGLE_VERTEX_PROJECT", {
         hint: "Please provide the Vertex project name",
+        ...props,
       })
       await env("GOOGLE_VERTEX_LOCATION", {
         hint: "Please provide the Vertex location setting",
+        ...props,
       })
     },
   },
   "mistral.chat": {
     name: "Mistral",
     getModel: async (modelId: string) => (await import("@ai-sdk/mistral")).mistral(modelId),
-    // https://github.com/vercel/ai/blob/main/packages/mistral/src/mistral-chat-settings.ts
+    // Keep in sync with https://github.com/vercel/ai/blob/main/packages/mistral/src/mistral-chat-settings.ts
     knownModels: [
       "open-mistral-7b",
       "open-mixtral-8x7b",
@@ -91,9 +100,10 @@ const PROVIDERS = {
       "mistral-medium-latest",
       "mistral-large-latest",
     ],
-    authenticate: async () => {
+    ensureAuthenticated: async (props) => {
       await env("MISTRAL_API_KEY", {
         hint: `Grab a key from <a href="https://console.mistral.ai/api-keys/">here</a>`,
+        ...props,
       })
     },
   },
@@ -102,7 +112,7 @@ const PROVIDERS = {
     name: string
     getModel: (modelId: string) => Promise<LanguageModel>
     knownModels: string[]
-    authenticate: () => Promise<void>
+    ensureAuthenticated: (envOptions: Omit<EnvConfig, "hint">) => Promise<void>
   }
 }
 
@@ -122,30 +132,75 @@ export async function getModel(provider: Provider, modelId: string) {
 }
 
 export async function switchModel() {
-  const providerKey = await select(
-    {
-      hint: "Please select a provider",
-      multiple: false,
-      strict: true,
-    },
-    typedObjectEntries(PROVIDERS).map(([key, p]) => ({
-      name: p.name,
-      value: key,
-    })),
-  )
+  const canAbort = !!model.value
 
-  const provider = PROVIDERS[providerKey]
+  await refreshable<void>(async ({ refresh, resolve }) => {
+    const providerKey = await select(
+      {
+        hint: "Please select a provider",
+        multiple: false,
+        width: PROMPT_WIDTH,
+        strict: true,
+        defaultValue: model.value?.provider,
+        shortcuts: canAbort
+          ? [
+              {
+                name: "Back to Chat",
+                key: "escape",
+                visible: true,
+                bar: "right",
+                onPress() {
+                  resolve()
+                },
+              },
+            ]
+          : undefined,
+      },
+      typedObjectEntries(PROVIDERS).map(([key, p]) => ({
+        name: p.name,
+        value: key,
+      })),
+    )
 
-  const modelId = await select<string>(
-    {
-      hint: `Please select the ${provider.name} chat completion model`,
-      multiple: false,
-      strict: false,
-    },
-    provider.knownModels,
-  )
+    const provider = PROVIDERS[providerKey]
 
-  await provider.authenticate()
+    await provider.ensureAuthenticated({
+      width: PROMPT_WIDTH,
+      shortcuts: [
+        {
+          name: "Cancel",
+          key: "escape",
+          visible: true,
+          bar: "right",
+          onPress() {
+            refresh()
+          },
+        },
+      ],
+    })
 
-  model.value = await provider.getModel(modelId)
+    const modelId = await select<string>(
+      {
+        hint: `Please select the ${provider.name} chat completion model`,
+        width: PROMPT_WIDTH,
+        multiple: false,
+        strict: false,
+        defaultValue: model.value?.modelId,
+        shortcuts: [
+          {
+            name: "Go Back to Provider Selection",
+            key: "escape",
+            visible: true,
+            bar: "right",
+            onPress() {
+              refresh()
+            },
+          },
+        ],
+      },
+      provider.knownModels,
+    )
+
+    model.value = await provider.getModel(modelId)
+  })
 }

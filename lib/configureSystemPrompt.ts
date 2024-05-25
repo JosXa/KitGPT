@@ -1,5 +1,5 @@
-import { systemPrompt } from "./cache"
 import { PROMPT_WIDTH } from "./settings"
+import { systemPrompt } from "./store"
 
 export default async function configureSystemPrompt() {
   // biome-ignore lint/suspicious/noAsyncPromiseExecutor: Wrapped in try/catch, should be safe.
