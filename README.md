@@ -2,11 +2,11 @@
 
 Gives you a ChatGPT-like interface directly in [Script Kit](https://scriptkit.com).
 
-## Features
+## Features / Roadmap
 
-- ✅ Streamed Responses
-- ✅ Editing the system prompt
-- ✅ All the models the Vercel AI SDK supports: OpenAI, Anthropic, Google, Google Vertex, Mistral
+- [x] Streamed Responses
+- [x] Editing the system prompt
+- [x] All the models the Vercel AI SDK supports: OpenAI, Anthropic, Google, Google Vertex, Mistral
 - [ ] Conversation History
 
 ## Installation
