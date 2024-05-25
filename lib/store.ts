@@ -30,28 +30,28 @@ effect(() => {
   debouncedWriteCache()
 })
 
-type HistoryData = {
-  conversations: {
-    [key: number]: {
-      title?: string
-      started: Date
-      lastAccessed: Date
-      messages: CoreMessage[]
-    }
-  }
-}
-
-const historyLoaded = false
-const historyDb = await db(
-  "_kitgpt-chat.history",
-  {
-    conversations: {},
-  } as HistoryData,
-  false,
-)
-
-export async function getConversations() {
-  if (!historyLoaded) {
-    await historyDb.read()
-  }
-}
+// type HistoryData = {
+//   conversations: {
+//     [key: number]: {
+//       title?: string
+//       started: Date
+//       lastAccessed: Date
+//       messages: CoreMessage[]
+//     }
+//   }
+// }
+//
+// const historyLoaded = false
+// const historyDb = await db(
+//   "_kitgpt-chat.history",
+//   {
+//     conversations: {},
+//   } as HistoryData,
+//   false,
+// )
+//
+// export async function getConversations() {
+//   if (!historyLoaded) {
+//     await historyDb.read()
+//   }
+// }

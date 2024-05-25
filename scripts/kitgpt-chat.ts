@@ -7,7 +7,7 @@ import "@johnlindquist/kit"
 
 import { error, refreshable } from "@josxa/kit-utils"
 import type { FORCE_REFRESH } from "@josxa/kit-utils/dist/src/refreshable"
-import { signal, untracked } from "@preact/signals-core"
+import { effect, signal, untracked } from "@preact/signals-core"
 import { type CoreMessage, streamText } from "ai"
 import type { Shortcut } from "../../../../.kit"
 import configureSystemPrompt from "../lib/configureSystemPrompt"
@@ -116,61 +116,14 @@ messagesDirty.subscribe((val) => {
   }
 })
 
-function buildShortcuts({
-  refresh,
-  showClear,
-}: {
-  refresh: () => typeof FORCE_REFRESH
-  showClear: boolean
-}): Shortcut[] {
-  return [
-    {
-      name: "Close",
-      key: `${cmd}+w`,
-      onPress: () => process.exit(),
-      bar: "left",
-    },
-    {
-      name: "Clear",
-      key: `${cmd}+shift+backspace`,
-      onPress: async () => {
-        await reset()
-        refresh()
-      },
-      bar: "left",
-    },
-    {
-      name: "System Prompt",
-      key: `${cmd}+p`,
-      onPress: async () => {
-        await configureSystemPrompt()
-        refresh()
-      },
-      bar: "right",
-      visible: true,
-    },
-    {
-      name: "Model",
-      key: `${cmd}+m`,
-      onPress: async () => {
-        await switchModel()
-        refresh()
-      },
-      bar: "right",
-      visible: true,
-    },
-  ]
-}
-
 // TODO: Think about whether holding the kit messages in a signal would be better
 await refreshable(
   async ({ refresh }) =>
     await chat({
       width: PROMPT_WIDTH,
       async onInit() {
-        setTimeout(() => {
-          setBounds({ height: 2000 })
-        }, 1000)
+        effect(() => setShortcuts(buildShortcuts({ refresh, showClear: messages.length > 0 })))
+
         errorHandler = async (err, title) => {
           await error(err, title)
           refresh()
@@ -183,7 +136,7 @@ await refreshable(
         }
         setDescription(`${model.value.provider} - ${model.value.modelId}`)
       },
-      shortcuts: buildShortcuts(refresh),
+      shortcuts: buildShortcuts({ refresh, showClear: messages.length > 0 }),
       actions: [
         // {
         //   name: "System Prompt",
@@ -221,3 +174,57 @@ div.kit-mbox > ul, ol {
       },
     }),
 )
+
+function buildShortcuts({
+  refresh,
+  showClear,
+}: {
+  refresh: () => typeof FORCE_REFRESH
+  showClear: boolean
+}) {
+  const res: Shortcut[] = [
+    {
+      name: "Close",
+      key: `${cmd}+w`,
+      onPress: () => process.exit(),
+      bar: "left",
+    },
+  ]
+
+  if (showClear) {
+    res.push({
+      name: "Clear",
+      key: `${cmd}+shift+backspace`,
+      onPress: async () => {
+        await reset()
+        refresh()
+      },
+      bar: "left",
+    })
+  }
+
+  res.push(
+    {
+      name: "System Prompt",
+      key: `${cmd}+p`,
+      onPress: async () => {
+        await configureSystemPrompt()
+        refresh()
+      },
+      bar: "right",
+      visible: true,
+    },
+    {
+      name: "Model",
+      key: `${cmd}+m`,
+      onPress: async () => {
+        await switchModel()
+        refresh()
+      },
+      bar: "right",
+      visible: true,
+    },
+  )
+
+  return res
+}
