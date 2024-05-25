@@ -8,13 +8,8 @@ import { signal, untracked } from "@preact/signals-core"
 import { type CoreMessage, streamText } from "ai"
 import { model, systemPrompt } from "../lib/cache"
 import configureSystemPrompt from "../lib/configureSystemPrompt"
+import { switchModel } from "../lib/models"
 import { PROMPT_WIDTH } from "../lib/settings"
-
-setWindowPosition("kit.exe", "Kit", 0, 0)
-
-await env("OPENAI_API_KEY", {
-  hint: `Grab a key from <a href="https://platform.openai.com/account/api-keys">here</a>`,
-})
 
 const messages: CoreMessage[] = []
 const messagesDirty = signal(false)
@@ -115,52 +110,63 @@ messagesDirty.subscribe((val) => {
 })
 
 // TODO: Think about whether holding the kit messages in a signal would be better
-await refreshable(async ({ refresh }) => {
-  await chat({
-    width: PROMPT_WIDTH,
-    onInit() {
-      setDescription(`${model.value.modelId}`)
-    },
-    shortcuts: [
-      {
-        name: "Close",
-        key: `${cmd}+w`,
-        onPress: () => process.exit(),
-        bar: "left",
+await refreshable(
+  async ({ refresh }) =>
+    await chat({
+      width: PROMPT_WIDTH,
+      onInit() {
+        setDescription(`${model.value.provider} - ${model.value.modelId}`)
       },
-      {
-        name: "Clear",
-        key: `${cmd}+shift+backspace`,
-        onPress: async () => {
-          await reset()
-          refresh()
+      shortcuts: [
+        {
+          name: "Close",
+          key: `${cmd}+w`,
+          onPress: () => process.exit(),
+          bar: "left",
         },
-        bar: "left",
-      },
-      {
-        name: "System Prompt",
-        key: `${cmd}+p`,
-        onPress: async () => {
-          await configureSystemPrompt()
-          refresh()
+        {
+          name: "Clear",
+          key: `${cmd}+shift+backspace`,
+          onPress: async () => {
+            await reset()
+            refresh()
+          },
+          bar: "left",
         },
-        bar: "right",
-        visible: true,
-      },
-    ],
-    actions: [
-      // {
-      //   name: "System Prompt",
-      //   shortcut: `${cmd}+p`,
-      //   onAction: async () => {
-      //     await configureSystemPrompt()
-      //     refresh()
-      //   },
-      //   visible: false,
-      // },
-    ],
-    alwaysOnTop: false,
-    css: `
+        {
+          name: "System Prompt",
+          key: `${cmd}+p`,
+          onPress: async () => {
+            await configureSystemPrompt()
+            refresh()
+          },
+          bar: "right",
+          visible: true,
+        },
+        {
+          name: "Model",
+          key: `${cmd}+m`,
+          onPress: async () => {
+            await switchModel()
+            refresh()
+          },
+          bar: "right",
+          visible: true,
+        },
+      ],
+      actions: [
+        // {
+        //   name: "System Prompt",
+        //   shortcut: `${cmd}+p`,
+        //   onAction: async () => {
+        //     await configureSystemPrompt()
+        //     refresh()
+        //   },
+        //   visible: false,
+        // },
+      ],
+      alwaysOnTop: false,
+      css: `
 div.kit-mbox > ul, ol {
   margin-block-start: 0 !important;
 }
@@ -168,12 +174,12 @@ div.kit-mbox > ul, ol {
   border: 0;
 }
     `,
-    onEscape: () => runningResponseStream.value?.abort("User canceled"),
-    onSubmit: (input) => {
-      if (!input) {
-        return
-      }
-      userMessage.value = input
-    },
-  })
-})
+      onEscape: () => runningResponseStream.value?.abort("User canceled"),
+      onSubmit: (input) => {
+        if (!input) {
+          return
+        }
+        userMessage.value = input
+      },
+    }),
+)
