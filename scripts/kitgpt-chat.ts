@@ -1,5 +1,5 @@
 // Name: KitGPT
-// Description: Chat with a variety of transformer models
+// Description: Chat with a variety of LLMs
 // Trigger: chat
 // Shortcut: cmd shift ä
 
@@ -8,6 +8,7 @@ import "@johnlindquist/kit"
 import type { Action, Shortcut } from "@johnlindquist/kit"
 import { error, refreshable } from "@josxa/kit-utils"
 import { batch, computed, effect, signal } from "@preact/signals-core"
+
 import { type CoreMessage, streamText } from "ai"
 import { deepSignal } from "deepsignal/core"
 import { generateNewTitleForConversation } from "../lib/ai/conversation-title"

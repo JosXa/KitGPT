@@ -22,7 +22,14 @@ const titleCase = (str: string) => {
 
 function buildPreview(convo: Conversation) {
   return md(
-    convo.messages?.map((m: CoreMessage) => `**${titleCase(m.role)}**: ${m.content}`).join("\n\n") ?? "No messages",
+    convo.messages
+      ?.map((m: CoreMessage) =>
+        `
+<b style="color: rgba(var(--color-primary), var(--tw-text-opacity))">${
+          m.role === "user" ? "You" : titleCase(m.role)
+        }</b>: ${m.content}`.trim(),
+      )
+      .join("\n\n") ?? "No messages",
   )
 }
 
