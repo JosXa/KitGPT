@@ -1,6 +1,5 @@
 import type { openai } from "@ai-sdk/openai"
 import { effect, signal } from "@preact/signals-core"
-import type { CoreMessage } from "ai"
 import { type Provider, getModel } from "./models"
 
 type DbData = {

@@ -5,56 +5,33 @@
 
 import "@johnlindquist/kit"
 
+import type { Action } from "@johnlindquist/kit"
 import { error, refreshable } from "@josxa/kit-utils"
-import type { FORCE_REFRESH } from "@josxa/kit-utils/dist/src/refreshable"
-import { effect, signal, untracked } from "@preact/signals-core"
-import { type CoreMessage, streamText } from "ai"
+import { computed, effect, signal } from "@preact/signals-core"
+import { type CoreMessage, generateObject, streamText } from "ai"
+import { deepSignal } from "deepsignal/core"
+import { z } from "zod"
 import type { Shortcut } from "../../../../.kit"
 import configureSystemPrompt from "../lib/configureSystemPrompt"
 import { switchModel } from "../lib/models"
-import { PROMPT_WIDTH } from "../lib/settings"
+import { PREVIEW_WIDTH_PERCENT, PROMPT_WIDTH } from "../lib/settings"
 import { model, systemPrompt } from "../lib/store"
 
-let errorHandler: (err: unknown, title?: string) => Promise<void> = (err: unknown) => {
-  throw err
-}
-
-const messages: CoreMessage[] = []
-const messagesDirty = signal(false)
-const userMessage = signal<string>("")
+const refreshHandle = signal<(() => any) | undefined>(undefined)
+const messages = deepSignal<CoreMessage[]>([])
 const runningResponseStream = signal<AbortController | null>(null)
 
-const lastKitMessageIdx = signal(-1)
-
 async function reset() {
-  messages.splice(0, messages.length)
-  lastKitMessageIdx.value = -1
-
   runningResponseStream.value?.abort("Resetting")
   runningResponseStream.value = null
-  await chat?.setMessages?.([])
+
+  messages.splice(0, messages.length)
+  await chat.setMessages?.([])
 }
 
-userMessage.subscribe(async function onUserMessage(content) {
-  if (userMessage.value === "") {
-    return
-  }
-  untracked(() => {
-    userMessage.value = ""
-  })
-  messages.push({ role: "user", content })
-  lastKitMessageIdx.value += 1
-
-  if (runningResponseStream.value) {
-    runningResponseStream.value.abort()
-  }
-  await streamResponse()
-})
-
 async function streamResponse() {
+  runningResponseStream.value?.abort(new Error("New message arrived"))
   runningResponseStream.value = new AbortController()
-
-  const assistantResponse: CoreMessage = { role: "assistant", content: "" }
 
   try {
     const result = await streamText({
@@ -64,124 +41,117 @@ async function streamResponse() {
       abortSignal: runningResponseStream.value.signal,
     })
 
-    messages.push(assistantResponse)
+    // Insert new message into the deep signal and get out a reactive version
+    const generatingMessage =
+      messages[
+        messages.push({
+          role: "assistant",
+          content: "",
+        }) - 1
+      ]!
 
     for await (const delta of result.textStream) {
-      assistantResponse.content += delta
-      messagesDirty.value = true
+      generatingMessage.content += delta
     }
 
     runningResponseStream.value = null
   } catch (err: unknown) {
-    if (err instanceof Error && err.name === "AbortError") {
+    if (err instanceof Error && err.message === "New message arrived") {
       return // Ok
     }
-    await errorHandler(err, "Unexpected error during response stream")
+    await error(err, "Unexpected error during response stream")
+    refreshHandle.value?.()
   }
 }
 
-messagesDirty.subscribe((val) => {
-  if (!val) {
-    return
-  }
-
-  const lastMsgIdx = messages.length - 1
-  const lastMsg = messages[lastMsgIdx]
-  if (!lastMsg) {
-    return
-  }
-
-  try {
-    if (lastMsg.role === "user") {
-      return // Already added by Kit
-    }
-
-    let content: string
-    if (Array.isArray(lastMsg.content)) {
-      content = lastMsg.content.join("") // TODO
-    } else {
-      content = lastMsg.content
-    }
-
-    content = md(content)
-
-    if (lastMsgIdx > lastKitMessageIdx.value) {
-      chat.addMessage?.({ title: lastMsg.role, text: content })
-      lastKitMessageIdx.value += 1
-    } else {
-      chat.setMessage?.(lastMsgIdx, { title: lastMsg.role, text: content })
-    }
-  } finally {
-    messagesDirty.value = false
-  }
+const followupQuestionsSchema = z.object({
+  moreExamplesQuestion: z.string(),
+  followupQuestions: z.array(
+    z.object({
+      question: z.string(),
+      emoji: z.string(),
+    }),
+  ),
 })
 
-// TODO: Think about whether holding the kit messages in a signal would be better
-await refreshable(
-  async ({ refresh }) =>
-    await chat({
-      width: PROMPT_WIDTH,
-      async onInit() {
-        effect(() => setShortcuts(buildShortcuts({ refresh, showClear: messages.length > 0 })))
+type FollowupQuestions = z.infer<typeof followupQuestionsSchema>
+const currentSuggestions = signal<FollowupQuestions | undefined>(undefined)
 
-        errorHandler = async (err, title) => {
-          await error(err, title)
-          refresh()
-        }
+messages.$length!.subscribe(() => (currentSuggestions.value = undefined))
 
-        if (!model.value) {
-          await switchModel()
-          refresh()
-          return
-        }
-        setDescription(`${model.value.provider} - ${model.value.modelId}`)
-      },
-      shortcuts: buildShortcuts({ refresh, showClear: messages.length > 0 }),
-      actions: [
-        // {
-        //   name: "System Prompt",
-        //   shortcut: `${cmd}+p`,
-        //   onAction: async () => {
-        //     await configureSystemPrompt()
-        //     refresh()
-        //   },
-        //   visible: false,
-        // },
-      ],
-      inputRegex: "\\S",
-      strict: true,
-      alwaysOnTop: false,
-      css: `
-div.kit-mbox > ul, ol {
-  margin-block-start: 0 !important;
+async function getSuggestions({
+  includeSystemPromptInContext = false,
+  contextLookbackMessages = 4,
+}: { includeSystemPromptInContext?: boolean; contextLookbackMessages?: number } = {}) {
+  const context = messages.slice(-contextLookbackMessages)
+  context.push({
+    role: "user",
+    content:
+      "Please list 4 possible follow-up questions I could ask about this. Also give me a good question to ask if I'm looking for more examples",
+  })
+
+  const { object } = await generateObject({
+    model: model.value!,
+    schema: followupQuestionsSchema,
+    messages: context,
+    system: includeSystemPromptInContext ? systemPrompt.value : undefined,
+  })
+
+  currentSuggestions.value = object
 }
 
-.rce-mbox:not(.rce-mbox-right) {
-  border: 0;
-}
-    `,
-      onEscape: () => runningResponseStream.value?.abort("User canceled"),
-      onInputSubmit: {
-        tl: "/tl",
-      },
-      onSubmit: async (input) => {
-        if (!input) {
-          const msgs = await chat?.getMessages?.()
-          console.log(msgs)
-          return
-        }
-        userMessage.value = input
-      },
-    }),
-)
+const itemUpdateSubscriptions = signal<(() => void)[]>([])
 
-function buildShortcuts({
-  refresh,
-  showClear,
-}: {
-  refresh: () => typeof FORCE_REFRESH
-  showClear: boolean
-}) {
+function buildKitMessage(coreMessage: CoreMessage) {
+  return {
+    title: coreMessage.role,
+    text: md(Array.isArray(coreMessage.content) ? coreMessage.content.join("") : coreMessage.content),
+  }
+}
+
+const prevLength = signal(0)
+
+messages.$length?.subscribe((newLength) => {
+  itemUpdateSubscriptions.value.forEach((cleanup) => cleanup())
+
+  if (newLength === 0) {
+    return
+  }
+
+  if (newLength <= prevLength.value) {
+    throw Error("Unknown state: Array got smaller or stayed the same size")
+  }
+
+  const newMessages = messages.slice(prevLength.value, newLength)
+  newMessages.forEach((msg) => {
+    if (msg.role === "user") {
+      streamResponse().then(() => getSuggestions())
+    } else {
+      // Add generated message to Kit
+      chat.addMessage?.(buildKitMessage(msg))
+    }
+  })
+
+  prevLength.value = newLength
+
+  itemUpdateSubscriptions.value = messages.map((msgSignal, idx) => {
+    let firstRun = true
+    return msgSignal.$content!.subscribe(() => {
+      if (firstRun) {
+        firstRun = false
+        return
+      }
+      chat.setMessage?.(idx, buildKitMessage(msgSignal))
+      return
+    })
+  })
+
+  return () => itemUpdateSubscriptions.value.forEach((sub) => sub())
+})
+
+const showClear = computed(() => messages.length > 0)
+
+const shortcuts = computed(() => {
   const res: Shortcut[] = [
     {
       name: "Close",
@@ -191,13 +161,13 @@ function buildShortcuts({
     },
   ]
 
-  if (showClear) {
+  if (showClear.value) {
     res.push({
       name: "Clear",
       key: `${cmd}+shift+backspace`,
       onPress: async () => {
         await reset()
-        refresh()
+        refreshHandle.value?.()
       },
       bar: "left",
     })
@@ -209,7 +179,7 @@ function buildShortcuts({
       key: `${cmd}+p`,
       onPress: async () => {
         await configureSystemPrompt()
-        refresh()
+        refreshHandle.value?.()
       },
       bar: "right",
       visible: true,
@@ -219,7 +189,7 @@ function buildShortcuts({
       key: `${cmd}+m`,
       onPress: async () => {
         await switchModel()
-        refresh()
+        refreshHandle.value?.()
       },
       bar: "right",
       visible: true,
@@ -227,4 +197,87 @@ function buildShortcuts({
   )
 
   return res
+})
+
+const actions = computed(() => {
+  const result: Action[] = []
+
+  const sugg = currentSuggestions.value
+  if (!sugg) {
+    return result
+  }
+
+  const zeroWidthSpace = " " // Make items appear at the top
+  result.push({
+    name: `${zeroWidthSpace}➕ ${sugg.moreExamplesQuestion}`,
+    onAction: () => {
+      chat.addMessage?.({ title: "user", text: md(sugg.moreExamplesQuestion), position: "right" })
+      messages.push({ role: "user", content: sugg.moreExamplesQuestion })
+    },
+    visible: true,
+  })
+
+  result.push(
+    ...sugg.followupQuestions.map((x) => ({
+      name: `${x.emoji} ${x.question}`,
+      onAction: () => {
+        chat.addMessage?.({ title: "user", text: md(x.question), position: "right" })
+        messages.push({ role: "user", content: x.question })
+      },
+      visible: true,
+    })),
+  )
+
+  return result
+})
+
+await refreshable(async ({ refresh }) => {
+  refreshHandle.value = refresh
+
+  if (!model.value) {
+    await switchModel()
+    refresh()
+    return
+  }
+
+  effect(() => setShortcuts(shortcuts.value))
+  effect(() => setActions(actions.value))
+
+  return await chat({
+    width: PROMPT_WIDTH,
+    onInit() {
+      setDescription(`${model.value.provider} - ${model.value.modelId}`)
+    },
+    shortcuts: shortcuts.value,
+    actions: actions.value,
+    previewWidthPercent: PREVIEW_WIDTH_PERCENT,
+    inputRegex: "\\S",
+    strict: true,
+    alwaysOnTop: false,
+    onBlur() {
+      console.log("blur")
+    },
+    css: `
+div.kit-mbox > ul, ol {
+  margin-block-start: 0 !important;
 }
+
+.rce-mbox:not(.rce-mbox-right) {
+  border: 0;
+}
+    `,
+    onEscape: () => runningResponseStream.value?.abort("User canceled"),
+    onInputSubmit: {
+      tl: "/tl",
+    },
+    onSubmit: async (content) => {
+      if (!content) {
+        const msgs = await chat.getMessages?.()
+        console.log(msgs)
+        return
+      }
+
+      messages.push({ role: "user", content })
+    },
+  })
+})
