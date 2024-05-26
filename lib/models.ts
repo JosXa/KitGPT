@@ -153,6 +153,15 @@ export async function switchModel() {
                   resolve()
                 },
               },
+              {
+                name: "Back to Chat",
+                key: `${cmd}+m`,
+                visible: false,
+                bar: "right",
+                onPress() {
+                  resolve()
+                },
+              },
             ]
           : undefined,
       },

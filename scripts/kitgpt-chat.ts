@@ -8,20 +8,19 @@ import "@johnlindquist/kit"
 import type { Action } from "@johnlindquist/kit"
 import { error, refreshable } from "@josxa/kit-utils"
 import { computed, effect, signal } from "@preact/signals-core"
-import { type CoreMessage, generateObject, streamText } from "ai"
-import { deepSignal } from "deepsignal/core"
-import { z } from "zod"
+import { type CoreMessage, streamText } from "ai"
 import type { Shortcut } from "../../../../.kit"
 import configureSystemPrompt from "../lib/configureSystemPrompt"
+import { showConversationHistory } from "../lib/history"
 import { switchModel } from "../lib/models"
 import { PREVIEW_WIDTH_PERCENT, PROMPT_WIDTH } from "../lib/settings"
-import { model, systemPrompt } from "../lib/store"
+import { currentSuggestions, messages, model, subscribeToMessageEdits, systemPrompt } from "../lib/store"
+import { getSuggestions } from "../lib/suggestions"
 
 const refreshHandle = signal<(() => any) | undefined>(undefined)
-const messages = deepSignal<CoreMessage[]>([])
 const runningResponseStream = signal<AbortController | null>(null)
 
-async function reset() {
+async function newConversation() {
   runningResponseStream.value?.abort("Resetting")
   runningResponseStream.value = null
 
@@ -64,44 +63,6 @@ async function streamResponse() {
   }
 }
 
-const followupQuestionsSchema = z.object({
-  moreExamplesQuestion: z.string(),
-  followupQuestions: z.array(
-    z.object({
-      question: z.string(),
-      emoji: z.string(),
-    }),
-  ),
-})
-
-type FollowupQuestions = z.infer<typeof followupQuestionsSchema>
-const currentSuggestions = signal<FollowupQuestions | undefined>(undefined)
-
-messages.$length!.subscribe(() => (currentSuggestions.value = undefined))
-
-async function getSuggestions({
-  includeSystemPromptInContext = false,
-  contextLookbackMessages = 4,
-}: { includeSystemPromptInContext?: boolean; contextLookbackMessages?: number } = {}) {
-  const context = messages.slice(-contextLookbackMessages)
-  context.push({
-    role: "user",
-    content:
-      "Please list 4 possible follow-up questions I could ask about this. Also give me a good question to ask if I'm looking for more examples",
-  })
-
-  const { object } = await generateObject({
-    model: model.value!,
-    schema: followupQuestionsSchema,
-    messages: context,
-    system: includeSystemPromptInContext ? systemPrompt.value : undefined,
-  })
-
-  currentSuggestions.value = object
-}
-
-const itemUpdateSubscriptions = signal<(() => void)[]>([])
-
 function buildKitMessage(coreMessage: CoreMessage) {
   return {
     title: coreMessage.role,
@@ -111,43 +72,30 @@ function buildKitMessage(coreMessage: CoreMessage) {
 
 const prevLength = signal(0)
 
-messages.$length?.subscribe((newLength) => {
-  itemUpdateSubscriptions.value.forEach((cleanup) => cleanup())
+effect(function onNewMessages() {
+  const newLength = messages.length
 
   if (newLength === 0) {
+    prevLength.value = 0
     return
   }
 
-  if (newLength <= prevLength.value) {
-    throw Error("Unknown state: Array got smaller or stayed the same size")
+  if (newLength > prevLength.value) {
+    const newMessages = messages.slice(prevLength.value, newLength)
+    newMessages.forEach((msg) => {
+      if (msg.role === "user") {
+        streamResponse().then(() => getSuggestions())
+      } else {
+        // Add generated message to Kit
+        chat.addMessage?.(buildKitMessage(msg))
+      }
+    })
   }
 
-  const newMessages = messages.slice(prevLength.value, newLength)
-  newMessages.forEach((msg) => {
-    if (msg.role === "user") {
-      streamResponse().then(() => getSuggestions())
-    } else {
-      // Add generated message to Kit
-      chat.addMessage?.(buildKitMessage(msg))
-    }
-  })
-
   prevLength.value = newLength
-
-  itemUpdateSubscriptions.value = messages.map((msgSignal, idx) => {
-    let firstRun = true
-    return msgSignal.$content!.subscribe(() => {
-      if (firstRun) {
-        firstRun = false
-        return
-      }
-      chat.setMessage?.(idx, buildKitMessage(msgSignal))
-      return
-    })
-  })
-
-  return () => itemUpdateSubscriptions.value.forEach((sub) => sub())
 })
+
+subscribeToMessageEdits((msgSignal, idx) => chat.setMessage?.(idx, buildKitMessage(msgSignal)))
 
 const showClear = computed(() => messages.length > 0)
 
@@ -165,13 +113,24 @@ const shortcuts = computed(() => {
     res.push({
       name: "Clear",
       key: `${cmd}+shift+backspace`,
+
       onPress: async () => {
-        await reset()
+        await newConversation()
         refreshHandle.value?.()
       },
       bar: "left",
     })
   }
+
+  res.push({
+    name: "History",
+    key: `${cmd}+h`,
+    onPress: async () => {
+      await showConversationHistory()
+      refreshHandle.value?.()
+    },
+    bar: "left",
+  })
 
   res.push(
     {
@@ -234,26 +193,26 @@ const actions = computed(() => {
 await refreshable(async ({ refresh }) => {
   refreshHandle.value = refresh
 
-  if (!model.value) {
-    await switchModel()
-    refresh()
-    return
-  }
-
   effect(() => setShortcuts(shortcuts.value))
   effect(() => setActions(actions.value))
 
+  // noinspection JSArrowFunctionBracesCanBeRemoved
   return await chat({
     width: PROMPT_WIDTH,
-    onInit() {
+    async onInit() {
+      if (!model.value) {
+        await switchModel()
+        refresh()
+        return
+      }
       setDescription(`${model.value.provider} - ${model.value.modelId}`)
     },
     shortcuts: shortcuts.value,
     actions: actions.value,
     previewWidthPercent: PREVIEW_WIDTH_PERCENT,
-    inputRegex: "\\S",
-    strict: true,
+    strict: true, // No empty messages
     alwaysOnTop: false,
+    keepPreview: false,
     onBlur() {
       console.log("blur")
     },
@@ -267,17 +226,8 @@ div.kit-mbox > ul, ol {
 }
     `,
     onEscape: () => runningResponseStream.value?.abort("User canceled"),
-    onInputSubmit: {
-      tl: "/tl",
-    },
-    onSubmit: async (content) => {
-      if (!content) {
-        const msgs = await chat.getMessages?.()
-        console.log(msgs)
-        return
-      }
-
-      messages.push({ role: "user", content })
+    onSubmit: (content) => {
+      content && messages.push({ role: "user", content })
     },
   })
 })
