@@ -1,7 +1,7 @@
 import { generateObject } from "ai"
 import { z } from "zod"
-import { NUM_SUGGESTIONS } from "./settings"
-import { currentSuggestions, messages, model, systemPrompt } from "./store"
+import { NUM_SUGGESTIONS } from "../settings"
+import { currentSuggestions, messages, model, systemPrompt } from "../store"
 
 const followupQuestionsSchema = z.object({
   moreExamplesQuestion: z.string(),
@@ -23,7 +23,7 @@ export async function getSuggestions({
 }: { includeSystemPromptInContext?: boolean; contextLookbackMessages?: number } = {}) {
   const context = messages.slice(-contextLookbackMessages)
   context.push({
-    role: "user",
+    role: "system",
     content: `Please list ${NUM_SUGGESTIONS} possible follow-up questions I could ask about this. Also give me a good question to ask if I'm looking for more examples`,
   })
 

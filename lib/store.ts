@@ -1,7 +1,7 @@
 import "@johnlindquist/kit"
 
 import type { openai } from "@ai-sdk/openai"
-import { effect, signal } from "@preact/signals-core"
+import { batch, effect, signal } from "@preact/signals-core"
 import type { CoreMessage } from "ai"
 import Database from "better-sqlite3"
 import { deepSignal } from "deepsignal/core"
@@ -11,9 +11,10 @@ import { type Provider, getModel } from "./models"
 import fs from "node:fs/promises"
 import { dirname } from "node:path"
 import { fileURLToPath } from "node:url"
+import { desc, eq } from "drizzle-orm"
 import { migrate } from "drizzle-orm/better-sqlite3/migrator"
-import { type InsertConversation, conversations } from "./schema"
-import type { FollowupQuestions } from "./suggestions"
+import type { FollowupQuestions } from "./ai/suggestions"
+import { type Conversation, type InsertConversation, conversations } from "./schema"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -66,8 +67,6 @@ export const subscribeToMessageEdits = (
     return () => cleanupFns.forEach((sub) => sub())
   })
 
-debugger
-
 const dbFilePath = path.join(__dirname, "../db", "_kitgpt-chat.history.sqlite3")
 const sqlite = new Database(dbFilePath)
 const drizzleDb = drizzle(sqlite)
@@ -104,39 +103,73 @@ The conversations database appears to be corrupted. Creating a backup at <code>$
 await ensureDbInitialized()
 
 const debouncedUpdateConversation = debounce(
-  (conversation: InsertConversation) => drizzleDb.update(conversations).set(conversation),
+  (id: number, values: Omit<InsertConversation, "id">) =>
+    drizzleDb.update(conversations).set(values).where(eq(conversations.id, id)).execute(),
   300,
   {
     leading: false,
     trailing: true,
   },
 )
-const insertConversation = (conversation: InsertConversation) => drizzleDb.insert(conversations).values(conversation)
 
-export async function getConversations() {
-  return await drizzleDb.select().from(conversations).limit(100)
+const CONVERSATION_METADATA_FIELDS = {
+  id: conversations.id,
+  title: conversations.title,
+  started: conversations.started,
+} as const satisfies Partial<{ [Key in keyof Conversation]: (typeof conversations)[Key] }>
+
+const insertConversation = (conversation: InsertConversation) =>
+  drizzleDb.insert(conversations).values(conversation).returning(CONVERSATION_METADATA_FIELDS)
+
+export const deleteConversation = (id: number) =>
+  drizzleDb.delete(conversations).where(eq(conversations.id, id)).execute()
+
+export async function getFullConversation(id: number) {
+  const res = await drizzleDb.select().from(conversations).where(eq(conversations.id, id)).limit(1)
+  if (!res[0]) {
+    throw Error(`Conversation with id ${id} does not exist.`)
+  }
+  return res[0]
 }
 
-const currentConversationId = signal<number | bigint | undefined>(undefined)
-export const currentConversationTitle = signal<string>("Untitled")
+export async function getAllConversationMetadata() {
+  // noinspection ES6RedundantAwait
+  return await drizzleDb
+    .select(CONVERSATION_METADATA_FIELDS)
+    .from(conversations)
+    .orderBy(desc(conversations.id))
+    .limit(100)
+}
 
-effect(async () => {
+export const currentConversationId = signal<number | undefined>(undefined)
+export const currentConversationTitle = signal<string | undefined>(undefined)
+
+const isInserting = signal(false)
+effect(() => {
   messages.forEach((x) => x.content) // dep
 
   if (currentConversationId.value) {
-    debouncedUpdateConversation({
-      title: currentConversationTitle.value,
+    debouncedUpdateConversation(currentConversationId.value, {
+      title: currentConversationTitle.value ?? "Untitled",
       messages,
     })
   } else {
-    if (messages.length === 0) {
+    if (messages.length === 0 || isInserting.value) {
       return
     }
 
-    const res = await insertConversation({
+    isInserting.value = true
+
+    insertConversation({
       title: currentConversationTitle.value,
       messages: messages,
     })
-    currentConversationId.value = res.lastInsertRowid
+      .then((res) => {
+        const metadataOfInserted = res[0]!
+        currentConversationId.value = metadataOfInserted.id
+      })
+      .finally(() => {
+        isInserting.value = false
+      })
   }
 })

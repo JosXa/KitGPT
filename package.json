@@ -1,6 +1,7 @@
 {
   "type": "module",
   "scripts": {
-    "migrate": "drizzle-kit generate"
+    "db:migrate": "drizzle-kit generate",
+    "db:studio": "npx drizzle-kit studio"
   }
 }

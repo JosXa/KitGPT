@@ -38,6 +38,7 @@ const PROVIDERS = {
         ...props,
       })
     },
+    platformStatisticsUrl: "https://platform.openai.com/usage",
   },
   "anthropic.messages": {
     name: "Anthropic",
@@ -50,6 +51,7 @@ const PROVIDERS = {
         ...props,
       })
     },
+    platformStatisticsUrl: undefined,
   },
   "google.generative-ai": {
     name: "Google",
@@ -67,6 +69,7 @@ const PROVIDERS = {
         ...props,
       })
     },
+    platformStatisticsUrl: undefined,
   },
   "google-vertex": {
     name: "Google Vertex",
@@ -87,6 +90,7 @@ const PROVIDERS = {
         ...props,
       })
     },
+    platformStatisticsUrl: undefined,
   },
   "mistral.chat": {
     name: "Mistral",
@@ -106,6 +110,7 @@ const PROVIDERS = {
         ...props,
       })
     },
+    platformStatisticsUrl: undefined,
   },
 } as const satisfies {
   [key: string]: {
@@ -113,12 +118,13 @@ const PROVIDERS = {
     getModel: (modelId: string) => Promise<LanguageModel>
     knownModels: string[]
     ensureAuthenticated: (envOptions: Omit<EnvConfig, "hint">) => Promise<void>
+    platformStatisticsUrl: string | undefined
   }
 }
 
 export type Provider = keyof typeof PROVIDERS
 
-const getProviderOrThrow = (provider: Provider) => {
+export const getProviderOrThrow = (provider: Provider) => {
   const res = PROVIDERS[provider]
   if (!res) {
     throw Error(`Provider '${provider}' is not implemented`)

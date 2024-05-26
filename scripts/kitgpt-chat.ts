@@ -5,31 +5,48 @@
 
 import "@johnlindquist/kit"
 
-import type { Action } from "@johnlindquist/kit"
+import type { Action, Shortcut } from "@johnlindquist/kit"
 import { error, refreshable } from "@josxa/kit-utils"
-import { computed, effect, signal } from "@preact/signals-core"
+import { batch, computed, effect, signal } from "@preact/signals-core"
 import { type CoreMessage, streamText } from "ai"
-import type { Shortcut } from "../../../../.kit"
+import { deepSignal } from "deepsignal/core"
+import { generateNewTitleForConversation } from "../lib/ai/conversation-title"
+import { getSuggestions } from "../lib/ai/suggestions"
 import configureSystemPrompt from "../lib/configureSystemPrompt"
-import { showConversationHistory } from "../lib/history"
-import { switchModel } from "../lib/models"
+import { showConversationHistory } from "../lib/conversation-history"
+import { type Provider, getProviderOrThrow, switchModel } from "../lib/models"
 import { PREVIEW_WIDTH_PERCENT, PROMPT_WIDTH } from "../lib/settings"
-import { currentSuggestions, messages, model, subscribeToMessageEdits, systemPrompt } from "../lib/store"
-import { getSuggestions } from "../lib/suggestions"
+import {
+  currentConversationId,
+  currentConversationTitle,
+  currentSuggestions,
+  messages,
+  model,
+  subscribeToMessageEdits,
+  systemPrompt,
+} from "../lib/store"
+import { titleCase } from "../lib/utils"
 
 const refreshHandle = signal<(() => any) | undefined>(undefined)
 const runningResponseStream = signal<AbortController | null>(null)
+const cancelResponseStream = () => {
+  runningResponseStream.value?.abort(new Error("Aborted"))
+  return null
+}
 
-async function newConversation() {
-  runningResponseStream.value?.abort("Resetting")
-  runningResponseStream.value = null
+function newConversation() {
+  runningResponseStream.value = cancelResponseStream()
 
-  messages.splice(0, messages.length)
-  await chat.setMessages?.([])
+  batch(() => {
+    currentConversationId.value = undefined
+    currentConversationTitle.value = undefined
+
+    messages.splice(0, messages.length)
+  })
 }
 
 async function streamResponse() {
-  runningResponseStream.value?.abort(new Error("New message arrived"))
+  cancelResponseStream()
   runningResponseStream.value = new AbortController()
 
   try {
@@ -37,6 +54,7 @@ async function streamResponse() {
       model: model.value!,
       system: systemPrompt.value,
       messages: messages,
+
       abortSignal: runningResponseStream.value.signal,
     })
 
@@ -55,7 +73,7 @@ async function streamResponse() {
 
     runningResponseStream.value = null
   } catch (err: unknown) {
-    if (err instanceof Error && err.message === "New message arrived") {
+    if (err instanceof Error && err.message === "Aborted") {
       return // Ok
     }
     await error(err, "Unexpected error during response stream")
@@ -65,30 +83,47 @@ async function streamResponse() {
 
 function buildKitMessage(coreMessage: CoreMessage) {
   return {
-    title: coreMessage.role,
+    title: coreMessage.role === "user" ? "You" : titleCase(coreMessage.role),
     text: md(Array.isArray(coreMessage.content) ? coreMessage.content.join("") : coreMessage.content),
+    position: coreMessage.role === "user" ? "right" : "left",
   }
 }
 
 const prevLength = signal(0)
 
-effect(function onNewMessages() {
-  const newLength = messages.length
+const kitUpdateQueue = deepSignal<Array<() => Promise<unknown> | unknown>>([])
+effect(() => {
+  if (kitUpdateQueue.length > 0) {
+    fireUpdates()
+  }
+})
 
-  if (newLength === 0) {
-    prevLength.value = 0
+let isRunning = false
+const fireUpdates = async () => {
+  if (isRunning) {
     return
   }
+  isRunning = true
 
-  if (newLength > prevLength.value) {
+  try {
+    while (kitUpdateQueue.length > 0) {
+      await kitUpdateQueue.shift()?.()
+    }
+  } finally {
+    isRunning = false
+  }
+}
+
+messages.$length!.subscribe(function onNewMessages(newLength: number) {
+  if (newLength === 0) {
+    kitUpdateQueue.push(() => chat.setMessages?.([]))
+  } else if (newLength > prevLength.value) {
     const newMessages = messages.slice(prevLength.value, newLength)
-    newMessages.forEach((msg) => {
-      if (msg.role === "user") {
-        streamResponse().then(() => getSuggestions())
-      } else {
-        // Add generated message to Kit
-        chat.addMessage?.(buildKitMessage(msg))
-      }
+
+    newMessages.forEach((msg, idx) => {
+      const msgIdx = prevLength.value + idx
+      const kitMsg = buildKitMessage(msg)
+      kitUpdateQueue.push(() => chat.setMessage?.(msgIdx, kitMsg))
     })
   }
 
@@ -96,8 +131,6 @@ effect(function onNewMessages() {
 })
 
 subscribeToMessageEdits((msgSignal, idx) => chat.setMessage?.(idx, buildKitMessage(msgSignal)))
-
-const showClear = computed(() => messages.length > 0)
 
 const shortcuts = computed(() => {
   const res: Shortcut[] = [
@@ -109,13 +142,13 @@ const shortcuts = computed(() => {
     },
   ]
 
-  if (showClear.value) {
+  if (messages.length > 0) {
     res.push({
-      name: "Clear",
-      key: `${cmd}+shift+backspace`,
+      name: "New Conversation",
+      key: `${cmd}+n`,
 
-      onPress: async () => {
-        await newConversation()
+      onPress: () => {
+        newConversation()
         refreshHandle.value?.()
       },
       bar: "left",
@@ -131,6 +164,20 @@ const shortcuts = computed(() => {
     },
     bar: "left",
   })
+
+  const platformStatisticsUrl = getProviderOrThrow(model.value!.provider as Provider).platformStatisticsUrl
+
+  if (platformStatisticsUrl) {
+    res.push({
+      name: "Usage",
+      key: `${cmd}+u`,
+      onPress: () => {
+        // noinspection JSArrowFunctionBracesCanBeRemoved
+        open(platformStatisticsUrl)
+      },
+      bar: "left",
+    })
+  }
 
   res.push(
     {
@@ -190,16 +237,35 @@ const actions = computed(() => {
   return result
 })
 
-await refreshable(async ({ refresh }) => {
-  refreshHandle.value = refresh
+effect(() => {
+  if (currentConversationTitle.value) {
+    return
+  }
 
-  effect(() => setShortcuts(shortcuts.value))
-  effect(() => setActions(actions.value))
+  if (messages.map((x) => x.content).join("\n").length > 50) {
+    currentConversationTitle.value = "Generating title..."
+    generateNewTitleForConversation()
+  }
+})
+
+await refreshable(async ({ refresh: _refresh }) => {
+  const cleanupFns: (() => void)[] = []
+
+  const refresh = () => {
+    cleanupFns.forEach((fn) => fn())
+    _refresh()
+  }
+
+  refreshHandle.value = refresh
 
   // noinspection JSArrowFunctionBracesCanBeRemoved
   return await chat({
     width: PROMPT_WIDTH,
     async onInit() {
+      cleanupFns.push(effect(() => setShortcuts(shortcuts.value)))
+      cleanupFns.push(effect(() => setActions(actions.value)))
+      cleanupFns.push(effect(() => setName(currentConversationTitle.value ?? "KitGPT")))
+
       if (!model.value) {
         await switchModel()
         refresh()
@@ -213,9 +279,6 @@ await refreshable(async ({ refresh }) => {
     strict: true, // No empty messages
     alwaysOnTop: false,
     keepPreview: false,
-    onBlur() {
-      console.log("blur")
-    },
     css: `
 div.kit-mbox > ul, ol {
   margin-block-start: 0 !important;
@@ -225,9 +288,12 @@ div.kit-mbox > ul, ol {
   border: 0;
 }
     `,
-    onEscape: () => runningResponseStream.value?.abort("User canceled"),
+    onEscape: () => {
+      cancelResponseStream()
+    },
     onSubmit: (content) => {
       content && messages.push({ role: "user", content })
+      streamResponse().then(() => getSuggestions())
     },
   })
 })
