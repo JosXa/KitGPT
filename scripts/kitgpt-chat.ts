@@ -324,7 +324,7 @@ await refreshable(async ({ refresh, signal }) => {
       }
     },
     shortcuts: shortcuts.value,
-    placeholder: `Ask ${currentProviderName.value ?? "AI"} anything...`,
+    placeholder: `✨ Ask ${currentProviderName.value ?? "AI"} anything...`,
     actions: actions.value,
     previewWidthPercent: PREVIEW_WIDTH_PERCENT,
     strict: true, // No empty messages
