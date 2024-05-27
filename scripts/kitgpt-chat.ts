@@ -1,5 +1,6 @@
 // Name: KitGPT
 // Description: Chat with a variety of LLMs
+// Author: @JosXa
 // Trigger: chat
 // Shortcut: cmd shift ä
 
@@ -26,8 +27,14 @@ import {
   resetConversation,
   subscribeToMessageEdits,
   systemPrompt,
+  welcomeShown,
 } from "../lib/store"
 import { titleCase } from "../lib/utils"
+import { welcome } from "../lib/welcome"
+
+if (!welcomeShown.value) {
+  await welcome()
+}
 
 enum Status {
   Ready = "Ready",

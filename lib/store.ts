@@ -24,15 +24,18 @@ type DbData = {
   modelId?: Parameters<typeof openai>[0]
   provider?: Provider
   systemPrompt: string // TODO: Extend to support a collection
+  welcomeShown: boolean
 }
 const settingsDb = await db("_kitgpt-chat.settings", {
   systemPrompt: "You are a helpful, respectful and honest assistant.",
+  welcomeShown: false,
 } as DbData)
 
 export const currentModel = signal(
   settingsDb.provider && settingsDb.modelId ? await getModel(settingsDb.provider, settingsDb.modelId) : undefined,
 )
 export const systemPrompt = signal(settingsDb.systemPrompt)
+export const welcomeShown = signal(settingsDb.welcomeShown)
 
 const debouncedWriteCache = debounce(settingsDb.write, 1000, {
   leading: false,
@@ -41,6 +44,7 @@ const debouncedWriteCache = debounce(settingsDb.write, 1000, {
 
 effect(() => {
   settingsDb.systemPrompt = systemPrompt.value
+  settingsDb.welcomeShown = welcomeShown.value
   settingsDb.modelId = currentModel.value?.modelId
   settingsDb.provider = currentModel.value?.provider as Provider
 

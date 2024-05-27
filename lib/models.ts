@@ -5,7 +5,7 @@ import { type LanguageModel, generateText, streamText } from "ai"
 import type { EnvConfig } from "../../../../.kit/types/kit"
 import { PROMPT_WIDTH } from "./settings"
 import { currentModel } from "./store"
-import { typedObjectEntries } from "./typed-objects"
+import { typedObjectEntries, typedObjectValues } from "./typed-objects"
 
 const PROVIDERS = {
   "openai.chat": {
@@ -121,6 +121,8 @@ const PROVIDERS = {
     platformStatisticsUrl: string | undefined
   }
 }
+
+export const ALL_PROVIDER_NAMES = typedObjectValues(PROVIDERS).map((p) => p.name)
 
 export type Provider = keyof typeof PROVIDERS
 
