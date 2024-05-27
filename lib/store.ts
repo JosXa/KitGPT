@@ -29,7 +29,7 @@ const settingsDb = await db("_kitgpt-chat.settings", {
   systemPrompt: "You are a helpful, respectful and honest assistant.",
 } as DbData)
 
-export const model = signal(
+export const currentModel = signal(
   settingsDb.provider && settingsDb.modelId ? await getModel(settingsDb.provider, settingsDb.modelId) : undefined,
 )
 export const systemPrompt = signal(settingsDb.systemPrompt)
@@ -41,8 +41,8 @@ const debouncedWriteCache = debounce(settingsDb.write, 1000, {
 
 effect(() => {
   settingsDb.systemPrompt = systemPrompt.value
-  settingsDb.modelId = model.value?.modelId
-  settingsDb.provider = model.value?.provider as Provider
+  settingsDb.modelId = currentModel.value?.modelId
+  settingsDb.provider = currentModel.value?.provider as Provider
 
   debouncedWriteCache()
 })

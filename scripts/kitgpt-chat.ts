@@ -20,9 +20,9 @@ import { type Provider, getProviderOrThrow, switchModel } from "../lib/models"
 import { PREVIEW_WIDTH_PERCENT, PROMPT_WIDTH } from "../lib/settings"
 import {
   currentConversationTitle,
+  currentModel,
   currentSuggestions,
   messages,
-  model,
   resetConversation,
   subscribeToMessageEdits,
   systemPrompt,
@@ -55,7 +55,7 @@ async function streamResponse() {
 
   try {
     const result = await streamText({
-      model: model.value!,
+      model: currentModel.value!,
       system: systemPrompt.value,
       messages: messages,
 
@@ -80,7 +80,7 @@ async function streamResponse() {
     if (err instanceof Error && err.message === "Aborted") {
       return // Ok
     }
-    await error(err, `An error occurred while generating a response from ${model.value?.provider}`)
+    await error(err, `An error occurred while generating a response from ${currentModel.value?.provider}`)
     refreshHandle.value?.()
   }
 }
@@ -193,8 +193,8 @@ const shortcuts = computed(() => {
     bar: "left",
   })
 
-  const platformStatisticsUrl = model.value
-    ? getProviderOrThrow(model.value.provider as Provider).platformStatisticsUrl
+  const platformStatisticsUrl = currentModel.value
+    ? getProviderOrThrow(currentModel.value.provider as Provider).platformStatisticsUrl
     : undefined
 
   if (platformStatisticsUrl) {
@@ -281,7 +281,7 @@ effect(() => {
 const footer = computed(() => {
   switch (currentStatus.value) {
     case Status.Responding: {
-      const providerName = getProviderOrThrow(model.value!.provider as Provider).name
+      const providerName = getProviderOrThrow(currentModel.value!.provider as Provider).name
       return `${providerName} is responding...`
     }
     default:
@@ -300,12 +300,14 @@ await refreshable(async ({ refresh, signal }) => {
         effect(() => setShortcuts(shortcuts.value)),
         effect(() => setActions(actions.value)),
         effect(() => setName(currentConversationTitle.value ?? "KitGPT")),
-        effect(() => model.value && setDescription(`${model.value.provider} - ${model.value.modelId}`)),
+        effect(
+          () => currentModel.value && setDescription(`${currentModel.value.provider} - ${currentModel.value.modelId}`),
+        ),
         effect(() => setFooter(footer.value)),
       ]
       signal.addEventListener("abort", () => effectHandles.forEach((fn) => fn()))
 
-      if (!model.value) {
+      if (!currentModel.value) {
         await switchModel()
         refresh()
         return

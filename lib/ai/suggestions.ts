@@ -2,7 +2,7 @@ import "@johnlindquist/kit"
 import { generateObject } from "ai"
 import { z } from "zod"
 import { NUM_SUGGESTIONS } from "../settings"
-import { currentSuggestions, messages, model, systemPrompt } from "../store"
+import { currentModel, currentSuggestions, messages, systemPrompt } from "../store"
 
 const followupQuestionsSchema = z.object({
   moreExamplesQuestion: z.string(),
@@ -31,7 +31,7 @@ export async function getSuggestions({
 
   try {
     const { object } = await generateObject({
-      model: model.value!,
+      model: currentModel.value!,
       schema: followupQuestionsSchema,
       messages: context,
       system: includeSystemPromptInContext ? systemPrompt.value : undefined,

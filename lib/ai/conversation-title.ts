@@ -1,7 +1,7 @@
 import "@johnlindquist/kit"
 import { generateObject } from "ai"
 import { z } from "zod"
-import { currentConversationTitle, messages, model } from "../store"
+import { currentConversationTitle, currentModel, messages } from "../store"
 import { truncate } from "../utils"
 
 const conversationTitleSchema = z.object({
@@ -17,7 +17,7 @@ export async function generateNewTitleForConversation() {
 
   try {
     const { object } = await generateObject({
-      model: model.value!,
+      model: currentModel.value!,
       schema: conversationTitleSchema,
       messages: context,
     })

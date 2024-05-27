@@ -4,7 +4,7 @@ import { error, refreshable, startSpinner } from "@josxa/kit-utils"
 import { type LanguageModel, generateText, streamText } from "ai"
 import type { EnvConfig } from "../../../../.kit/types/kit"
 import { PROMPT_WIDTH } from "./settings"
-import { model } from "./store"
+import { currentModel } from "./store"
 import { typedObjectEntries } from "./typed-objects"
 
 const PROVIDERS = {
@@ -140,7 +140,7 @@ export async function getModel(provider: Provider, modelId: string) {
 async function testProvider() {
   try {
     const result = await generateText({
-      model: model.value!,
+      model: currentModel.value!,
       messages: [{ role: "user", content: 'Please respond "I am online." and say nothing else!' }],
     })
     return { ok: result.text.length > 0, error: undefined }
@@ -150,7 +150,7 @@ async function testProvider() {
 }
 
 export async function switchModel() {
-  const canAbort = !!model.value
+  const canAbort = !!currentModel.value
 
   await refreshable<void>(async ({ refresh, resolve }) => {
     const providerKey = await select(
@@ -159,7 +159,7 @@ export async function switchModel() {
         multiple: false,
         width: PROMPT_WIDTH,
         strict: true,
-        defaultValue: model.value?.provider,
+        defaultValue: currentModel.value?.provider,
         shortcuts: canAbort
           ? [
               {
@@ -212,7 +212,7 @@ export async function switchModel() {
         width: PROMPT_WIDTH,
         multiple: false,
         strict: false,
-        defaultValue: model.value?.modelId,
+        defaultValue: currentModel.value?.modelId,
         shortcuts: [
           {
             name: "Go Back to Provider Selection",
@@ -228,7 +228,7 @@ export async function switchModel() {
       provider.knownModels,
     )
 
-    model.value = await provider.getModel(modelId)
+    currentModel.value = await provider.getModel(modelId)
 
     const spinner = startSpinner("spaceX", { initialMessage: "Testing connection..." }, { width: PROMPT_WIDTH })
     spinner.message = "Testing connection..." // TODO: There's a bug with the initialMessage
@@ -237,7 +237,7 @@ export async function switchModel() {
 
     if (!testResult.ok) {
       await div({
-        html: md(`# Cannot connect to ${model.value.provider}
+        html: md(`# Cannot connect to ${currentModel.value.provider}
       
 **Error:** <u>${testResult.error}</u>
 
