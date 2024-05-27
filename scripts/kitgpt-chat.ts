@@ -2,7 +2,7 @@
 // Description: Chat with a variety of LLMs
 // Author: @JosXa
 // Trigger: chat
-// Shortcut: cmd shift ä
+// Shortcut: cmd alt ä
 
 import "@johnlindquist/kit"
 
