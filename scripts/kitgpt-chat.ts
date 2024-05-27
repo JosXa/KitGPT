@@ -169,7 +169,9 @@ const shortcuts = computed(() => {
     bar: "left",
   })
 
-  const platformStatisticsUrl = getProviderOrThrow(model.value!.provider as Provider).platformStatisticsUrl
+  const platformStatisticsUrl = model.value
+    ? getProviderOrThrow(model.value.provider as Provider).platformStatisticsUrl
+    : undefined
 
   if (platformStatisticsUrl) {
     res.push({
