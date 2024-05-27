@@ -8,7 +8,7 @@ import "@johnlindquist/kit"
 import type { Action, Shortcut } from "@johnlindquist/kit"
 
 import { error, refreshable } from "@josxa/kit-utils"
-import { batch, computed, effect, signal } from "@preact/signals-core"
+import { batch, computed, effect, signal, untracked } from "@preact/signals-core"
 
 import { type CoreMessage, streamText } from "ai"
 import { deepSignal } from "deepsignal/core"
@@ -30,14 +30,12 @@ import {
 import { titleCase } from "../lib/utils"
 
 const refreshHandle = signal<(() => any) | undefined>(undefined)
-const runningResponseStream = signal<AbortController | null>(null)
-const cancelResponseStream = () => {
-  runningResponseStream.value?.abort(new Error("Aborted"))
-  return null
-}
+
+const responseStreamController = signal<AbortController | null>(null)
+const abortResponseStream = () => responseStreamController.value?.abort(new Error("Aborted"))
 
 function newConversation() {
-  runningResponseStream.value = cancelResponseStream()
+  abortResponseStream()
 
   batch(() => {
     currentConversationId.value = undefined
@@ -48,8 +46,8 @@ function newConversation() {
 }
 
 async function streamResponse() {
-  cancelResponseStream()
-  runningResponseStream.value = new AbortController()
+  abortResponseStream()
+  responseStreamController.value = new AbortController()
 
   try {
     const result = await streamText({
@@ -57,7 +55,7 @@ async function streamResponse() {
       system: systemPrompt.value,
       messages: messages,
 
-      abortSignal: runningResponseStream.value.signal,
+      abortSignal: responseStreamController.value.signal,
     })
 
     // Insert new message into the deep signal and get out a reactive version
@@ -73,12 +71,12 @@ async function streamResponse() {
       generatingMessage.content += delta
     }
 
-    runningResponseStream.value = null
+    responseStreamController.value = null
   } catch (err: unknown) {
     if (err instanceof Error && err.message === "Aborted") {
       return // Ok
     }
-    await error(err, "Unexpected error during response stream")
+    await error(err, `An error occurred while generating a response from ${model.value?.provider}`)
     refreshHandle.value?.()
   }
 }
@@ -96,11 +94,7 @@ function buildKitMessage(coreMessage: CoreMessage) {
 const prevLength = signal(0)
 
 const kitUpdateQueue = deepSignal<Array<() => Promise<unknown> | unknown>>([])
-effect(() => {
-  if (kitUpdateQueue.length > 0) {
-    fireUpdates()
-  }
-})
+effect(() => kitUpdateQueue.length > 0 && fireUpdates())
 
 let isRunning = false
 const fireUpdates = async () => {
@@ -132,6 +126,18 @@ messages.$length!.subscribe(function onNewMessages(newLength: number) {
   }
 
   prevLength.value = newLength
+})
+
+effect(function getSuggestionsOnAssistantMessage() {
+  if (messages.length > 0 && messages[messages.length - 1]?.role === "assistant") {
+    untracked(() => getSuggestions())
+  }
+})
+
+effect(function streamResponseOnUserMessage() {
+  if (messages.length > 0 && messages[messages.length - 1]?.role === "user") {
+    untracked(() => streamResponse())
+  }
 })
 
 subscribeToMessageEdits((msgSignal, idx) => chat.setMessage?.(idx, buildKitMessage(msgSignal)))
@@ -254,30 +260,26 @@ effect(() => {
   }
 })
 
-await refreshable(async ({ refresh: _refresh }) => {
-  const cleanupFns: (() => void)[] = []
-
-  const refresh = () => {
-    cleanupFns.forEach((fn) => fn())
-    _refresh()
-  }
-
+await refreshable(async ({ refresh, signal }) => {
   refreshHandle.value = refresh
 
   // noinspection JSArrowFunctionBracesCanBeRemoved
   return await chat({
     width: PROMPT_WIDTH,
     async onInit() {
-      cleanupFns.push(effect(() => setShortcuts(shortcuts.value)))
-      cleanupFns.push(effect(() => setActions(actions.value)))
-      cleanupFns.push(effect(() => setName(currentConversationTitle.value ?? "KitGPT")))
+      const effectHandles = [
+        effect(() => setShortcuts(shortcuts.value)),
+        effect(() => setActions(actions.value)),
+        effect(() => setName(currentConversationTitle.value ?? "KitGPT")),
+        effect(() => model.value && setDescription(`${model.value.provider} - ${model.value.modelId}`)),
+      ]
+      signal.addEventListener("abort", () => effectHandles.forEach((fn) => fn()))
 
       if (!model.value) {
         await switchModel()
         refresh()
         return
       }
-      setDescription(`${model.value.provider} - ${model.value.modelId}`)
     },
     shortcuts: shortcuts.value,
     actions: actions.value,
@@ -295,11 +297,11 @@ div.kit-mbox > ul, ol {
 }
     `,
     onEscape: () => {
-      cancelResponseStream()
+      abortResponseStream()
     },
-    onSubmit: (content) => {
+    onSubmit(content) {
       content && messages.push({ role: "user", content })
-      streamResponse().then(() => getSuggestions())
+      refresh()
     },
   })
 })

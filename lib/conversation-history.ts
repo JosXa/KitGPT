@@ -7,6 +7,7 @@ import { PROMPT_WIDTH } from "./settings"
 import {
   currentConversationId,
   currentConversationTitle,
+  currentSuggestions,
   deleteConversation,
   getAllConversationMetadata,
   getFullConversation,
@@ -131,9 +132,13 @@ export async function showConversationHistory() {
 async function loadConversation(conversationId: number) {
   const conversation = await getFullConvoCached(conversationId)
   messages.splice(0, messages.length)
-  batch(() => messages.push(...(conversation.messages ?? [])))
-  currentConversationId.value = conversation.id
-  currentConversationTitle.value = conversation.title ?? "Untitled"
+
+  batch(() => {
+    currentSuggestions.value = undefined
+    currentConversationId.value = conversation.id
+    currentConversationTitle.value = conversation.title ?? "Untitled"
+    messages.push(...(conversation.messages ?? []))
+  })
 }
 
 async function renameConversationPrompt(conversation: Conversation) {

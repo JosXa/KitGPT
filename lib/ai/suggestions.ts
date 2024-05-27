@@ -1,3 +1,4 @@
+import "@johnlindquist/kit"
 import { generateObject } from "ai"
 import { z } from "zod"
 import { NUM_SUGGESTIONS } from "../settings"
@@ -24,15 +25,20 @@ export async function getSuggestions({
   const context = messages.slice(-contextLookbackMessages)
   context.push({
     role: "system",
-    content: `Please list ${NUM_SUGGESTIONS} possible follow-up questions I could ask about this. Also give me a good question to ask if I'm looking for more examples`,
+    content: `Please list ${NUM_SUGGESTIONS} possible follow-up questions I could ask about this. Also give me a good question to ask if I'm looking for more examples.
+      Note: The questions should all be from the user's perspective`,
   })
 
-  const { object } = await generateObject({
-    model: model.value!,
-    schema: followupQuestionsSchema,
-    messages: context,
-    system: includeSystemPromptInContext ? systemPrompt.value : undefined,
-  })
+  try {
+    const { object } = await generateObject({
+      model: model.value!,
+      schema: followupQuestionsSchema,
+      messages: context,
+      system: includeSystemPromptInContext ? systemPrompt.value : undefined,
+    })
 
-  currentSuggestions.value = object
+    currentSuggestions.value = object
+  } catch (err) {
+    warn(new Error("Unable to generate suggestions", { cause: err }))
+  }
 }

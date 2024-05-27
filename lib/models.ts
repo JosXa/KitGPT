@@ -1,7 +1,7 @@
 // noinspection JSArrowFunctionBracesCanBeRemoved
 
-import { refreshable } from "@josxa/kit-utils"
-import type { LanguageModel } from "ai"
+import { error, refreshable, startSpinner } from "@josxa/kit-utils"
+import { type LanguageModel, generateText, streamText } from "ai"
 import type { EnvConfig } from "../../../../.kit/types/kit"
 import { PROMPT_WIDTH } from "./settings"
 import { model } from "./store"
@@ -137,6 +137,18 @@ export async function getModel(provider: Provider, modelId: string) {
   return await p.getModel(modelId)
 }
 
+async function testProvider() {
+  try {
+    const result = await generateText({
+      model: model.value!,
+      messages: [{ role: "user", content: 'Please respond "I am online." and say nothing else!' }],
+    })
+    return { ok: result.text.length > 0, error: undefined }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) }
+  }
+}
+
 export async function switchModel() {
   const canAbort = !!model.value
 
@@ -217,5 +229,21 @@ export async function switchModel() {
     )
 
     model.value = await provider.getModel(modelId)
+
+    const spinner = startSpinner("spaceX", { initialMessage: "Testing connection..." }, { width: PROMPT_WIDTH })
+    spinner.message = "Testing connection..." // TODO: There's a bug with the initialMessage
+    const testResult = await testProvider()
+    spinner.stop()
+
+    if (!testResult.ok) {
+      await div({
+        html: md(`# Cannot connect to ${model.value.provider}
+      
+**Error:** <u>${testResult.error}</u>
+
+In case your access token is expired, please edit your \`~/.kenv/.env\` file.`),
+        width: PROMPT_WIDTH,
+      })
+    }
   })
 }

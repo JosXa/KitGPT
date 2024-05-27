@@ -1,3 +1,4 @@
+import "@johnlindquist/kit"
 import { generateObject } from "ai"
 import { z } from "zod"
 import { currentConversationTitle, messages, model } from "../store"
@@ -14,11 +15,15 @@ export async function generateNewTitleForConversation() {
     content: "Please provide a short, descriptive name for this entire conversation",
   })
 
-  const { object } = await generateObject({
-    model: model.value!,
-    schema: conversationTitleSchema,
-    messages: context,
-  })
+  try {
+    const { object } = await generateObject({
+      model: model.value!,
+      schema: conversationTitleSchema,
+      messages: context,
+    })
 
-  currentConversationTitle.value = truncate(object.conversationTitle, 50)
+    currentConversationTitle.value = truncate(object.conversationTitle, 50)
+  } catch (err) {
+    warn(new Error("Unable to generate title for conversation", { cause: err }))
+  }
 }
