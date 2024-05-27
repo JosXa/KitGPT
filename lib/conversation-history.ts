@@ -11,6 +11,8 @@ import {
   getAllConversationMetadata,
   getFullConversation,
   messages,
+  systemPrompt,
+  updateConversation,
 } from "./store"
 
 const titleCase = (str: string) => {
@@ -79,7 +81,7 @@ export async function showConversationHistory() {
                 shortcut: `${cmd}+r`,
                 visible: true,
                 async onAction() {
-                  await div("Not implemented")
+                  await renameConversationPrompt(await getFullConvoCached(convo.id))
                   refresh()
                 },
               },
@@ -132,4 +134,26 @@ async function loadConversation(conversationId: number) {
   batch(() => messages.push(...(conversation.messages ?? [])))
   currentConversationId.value = conversation.id
   currentConversationTitle.value = conversation.title ?? "Untitled"
+}
+
+async function renameConversationPrompt(conversation: Conversation) {
+  const newTitle = await arg<string>({
+    placeholder: "New Title",
+    width: PROMPT_WIDTH,
+    shortcuts: [
+      {
+        name: "Cancel",
+        key: "Escape",
+        onPress: () => submit(conversation.title),
+        bar: "right",
+      },
+    ],
+    input: conversation.title ?? "",
+    validate: (v) => v.trim().length > 0 || "Please provide a title",
+  })
+
+  if (newTitle !== conversation.title) {
+    currentConversationTitle.value = newTitle
+    await updateConversation(conversation.id, { title: newTitle })
+  }
 }

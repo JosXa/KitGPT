@@ -102,15 +102,13 @@ The conversations database appears to be corrupted. Creating a backup at <code>$
 
 await ensureDbInitialized()
 
-const debouncedUpdateConversation = debounce(
-  (id: number, values: Omit<InsertConversation, "id">) =>
-    drizzleDb.update(conversations).set(values).where(eq(conversations.id, id)).execute(),
-  300,
-  {
-    leading: false,
-    trailing: true,
-  },
-)
+export const updateConversation = (id: number, values: Omit<InsertConversation, "id">) =>
+  drizzleDb.update(conversations).set(values).where(eq(conversations.id, id)).execute()
+
+const debouncedUpdateConversation = debounce(updateConversation, 300, {
+  leading: false,
+  trailing: true,
+})
 
 const CONVERSATION_METADATA_FIELDS = {
   id: conversations.id,

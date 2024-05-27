@@ -6,6 +6,7 @@
 import "@johnlindquist/kit"
 
 import type { Action, Shortcut } from "@johnlindquist/kit"
+
 import { error, refreshable } from "@josxa/kit-utils"
 import { batch, computed, effect, signal } from "@preact/signals-core"
 
@@ -83,9 +84,11 @@ async function streamResponse() {
 }
 
 function buildKitMessage(coreMessage: CoreMessage) {
+  const mdText = Array.isArray(coreMessage.content) ? coreMessage.content.join("") : coreMessage.content
+
   return {
     title: coreMessage.role === "user" ? "You" : titleCase(coreMessage.role),
-    text: md(Array.isArray(coreMessage.content) ? coreMessage.content.join("") : coreMessage.content),
+    text: md(mdText),
     position: coreMessage.role === "user" ? "right" : "left",
   }
 }
