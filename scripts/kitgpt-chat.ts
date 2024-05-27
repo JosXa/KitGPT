@@ -292,7 +292,7 @@ const currentProviderName = computed(() =>
 const footer = computed(() => {
   switch (currentStatus.value) {
     case Status.Responding: {
-      return `${currentProviderName.value} is responding...`
+      return `${currentProviderName.value ?? "AI"} is responding...`
     }
     default:
       return currentStatus.value
