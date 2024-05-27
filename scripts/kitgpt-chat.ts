@@ -212,7 +212,7 @@ const shortcuts = computed(() => {
         // noinspection JSArrowFunctionBracesCanBeRemoved
         open(platformStatisticsUrl)
       },
-      bar: "left",
+      bar: "right",
     })
   }
 
