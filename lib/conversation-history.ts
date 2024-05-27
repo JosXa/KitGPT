@@ -12,6 +12,7 @@ import {
   getAllConversationMetadata,
   getFullConversation,
   messages,
+  resetConversation,
   systemPrompt,
   updateConversation,
 } from "./store"
@@ -131,14 +132,9 @@ export async function showConversationHistory() {
 
 async function loadConversation(conversationId: number) {
   const conversation = await getFullConvoCached(conversationId)
-  messages.splice(0, messages.length)
 
-  batch(() => {
-    currentSuggestions.value = undefined
-    currentConversationId.value = conversation.id
-    currentConversationTitle.value = conversation.title ?? "Untitled"
-    messages.push(...(conversation.messages ?? []))
-  })
+  resetConversation()
+  batch(() => messages.push(...(conversation.messages ?? [])))
 }
 
 async function renameConversationPrompt(conversation: Conversation) {

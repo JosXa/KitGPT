@@ -131,12 +131,12 @@ export async function getFullConversation(id: number) {
 }
 
 export async function getAllConversationMetadata() {
-  // noinspection ES6RedundantAwait
   return await drizzleDb
     .select(CONVERSATION_METADATA_FIELDS)
     .from(conversations)
     .orderBy(desc(conversations.id))
     .limit(100)
+    .execute()
 }
 
 export const currentConversationId = signal<number | undefined>(undefined)
@@ -171,3 +171,12 @@ effect(() => {
       })
   }
 })
+
+export function resetConversation() {
+  batch(() => {
+    currentConversationId.value = undefined
+    currentConversationTitle.value = undefined
+    currentSuggestions.value = undefined
+    messages.splice(0, messages.length)
+  })
+}

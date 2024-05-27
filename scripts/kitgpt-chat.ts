@@ -8,7 +8,7 @@ import "@johnlindquist/kit"
 import type { Action, Shortcut } from "@johnlindquist/kit"
 
 import { error, refreshable } from "@josxa/kit-utils"
-import { batch, computed, effect, signal, untracked } from "@preact/signals-core"
+import { computed, effect, signal, untracked } from "@preact/signals-core"
 
 import { type CoreMessage, streamText } from "ai"
 import { deepSignal } from "deepsignal/core"
@@ -19,11 +19,11 @@ import { showConversationHistory } from "../lib/conversation-history"
 import { type Provider, getProviderOrThrow, switchModel } from "../lib/models"
 import { PREVIEW_WIDTH_PERCENT, PROMPT_WIDTH } from "../lib/settings"
 import {
-  currentConversationId,
   currentConversationTitle,
   currentSuggestions,
   messages,
   model,
+  resetConversation,
   subscribeToMessageEdits,
   systemPrompt,
 } from "../lib/store"
@@ -36,13 +36,7 @@ const abortResponseStream = () => responseStreamController.value?.abort(new Erro
 
 function newConversation() {
   abortResponseStream()
-
-  batch(() => {
-    currentConversationId.value = undefined
-    currentConversationTitle.value = undefined
-
-    messages.splice(0, messages.length)
-  })
+  resetConversation()
 }
 
 async function streamResponse() {
