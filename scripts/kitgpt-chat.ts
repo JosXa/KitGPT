@@ -29,10 +29,20 @@ import {
 } from "../lib/store"
 import { titleCase } from "../lib/utils"
 
-const refreshHandle = signal<(() => any) | undefined>(undefined)
+enum Status {
+  Ready = "Ready",
+  GettingSuggestions = "Getting suggestions...",
+  Responding = "Responding...",
+}
 
-const responseStreamController = signal<AbortController | null>(null)
-const abortResponseStream = () => responseStreamController.value?.abort(new Error("Aborted"))
+const refreshHandle = signal<(() => any) | undefined>(undefined)
+const currentStatus = signal(Status.Ready)
+
+const currentResponseStream = signal<AbortController | null>(null)
+const abortResponseStream = () => {
+  currentResponseStream.value?.abort(new Error("Aborted"))
+  currentResponseStream.value = null
+}
 
 function newConversation() {
   abortResponseStream()
@@ -41,7 +51,7 @@ function newConversation() {
 
 async function streamResponse() {
   abortResponseStream()
-  responseStreamController.value = new AbortController()
+  currentResponseStream.value = new AbortController()
 
   try {
     const result = await streamText({
@@ -49,7 +59,7 @@ async function streamResponse() {
       system: systemPrompt.value,
       messages: messages,
 
-      abortSignal: responseStreamController.value.signal,
+      abortSignal: currentResponseStream.value.signal,
     })
 
     // Insert new message into the deep signal and get out a reactive version
@@ -65,7 +75,7 @@ async function streamResponse() {
       generatingMessage.content += delta
     }
 
-    responseStreamController.value = null
+    currentResponseStream.value = null
   } catch (err: unknown) {
     if (err instanceof Error && err.message === "Aborted") {
       return // Ok
@@ -122,15 +132,29 @@ messages.$length!.subscribe(function onNewMessages(newLength: number) {
   prevLength.value = newLength
 })
 
-effect(function getSuggestionsOnAssistantMessage() {
-  if (messages.length > 0 && messages[messages.length - 1]?.role === "assistant") {
-    untracked(() => getSuggestions())
+effect(function streamResponseOnUserMessage() {
+  if (messages.length > 0 && messages[messages.length - 1]?.role === "user" && currentResponseStream.value === null) {
+    untracked(() => {
+      currentStatus.value = Status.Responding
+      return streamResponse()
+    })
   }
 })
 
-effect(function streamResponseOnUserMessage() {
-  if (messages.length > 0 && messages[messages.length - 1]?.role === "user") {
-    untracked(() => streamResponse())
+effect(function getSuggestionsOnAssistantMessage() {
+  if (
+    messages.length > 0 &&
+    messages[messages.length - 1]?.role === "assistant" &&
+    currentResponseStream.value === null
+  ) {
+    untracked(() => {
+      currentStatus.value = Status.GettingSuggestions
+      getSuggestions().finally(() => {
+        if (currentStatus.value === Status.GettingSuggestions) {
+          currentStatus.value = Status.Ready
+        }
+      })
+    })
   }
 })
 
@@ -254,6 +278,17 @@ effect(() => {
   }
 })
 
+const footer = computed(() => {
+  switch (currentStatus.value) {
+    case Status.Responding: {
+      const providerName = getProviderOrThrow(model.value!.provider as Provider).name
+      return `${providerName} is responding...`
+    }
+    default:
+      return currentStatus.value
+  }
+})
+
 await refreshable(async ({ refresh, signal }) => {
   refreshHandle.value = refresh
 
@@ -266,6 +301,7 @@ await refreshable(async ({ refresh, signal }) => {
         effect(() => setActions(actions.value)),
         effect(() => setName(currentConversationTitle.value ?? "KitGPT")),
         effect(() => model.value && setDescription(`${model.value.provider} - ${model.value.modelId}`)),
+        effect(() => setFooter(footer.value)),
       ]
       signal.addEventListener("abort", () => effectHandles.forEach((fn) => fn()))
 
