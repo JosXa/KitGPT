@@ -285,11 +285,14 @@ effect(() => {
   }
 })
 
+const currentProviderName = computed(() =>
+  currentModel.value ? getProviderOrThrow(currentModel.value!.provider as Provider).name : undefined,
+)
+
 const footer = computed(() => {
   switch (currentStatus.value) {
     case Status.Responding: {
-      const providerName = getProviderOrThrow(currentModel.value!.provider as Provider).name
-      return `${providerName} is responding...`
+      return `${currentProviderName.value} is responding...`
     }
     default:
       return currentStatus.value
@@ -321,6 +324,7 @@ await refreshable(async ({ refresh, signal }) => {
       }
     },
     shortcuts: shortcuts.value,
+    placeholder: `Ask ${currentProviderName.value ?? "AI"} anything...`,
     actions: actions.value,
     previewWidthPercent: PREVIEW_WIDTH_PERCENT,
     strict: true, // No empty messages
