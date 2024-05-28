@@ -36,6 +36,8 @@ if (!welcomeShown.value) {
   await welcome()
 }
 
+const passedValue = fla
+
 enum Status {
   Ready = "Ready",
   GettingSuggestions = "Getting suggestions...",
@@ -337,7 +339,7 @@ const footer = computed(() => {
   }
 })
 
-await refreshable(async ({ refresh, signal }) => {
+await refreshable(async ({ refresh, refreshCount, signal }) => {
   refreshHandle.value = refresh
 
   try {
@@ -346,13 +348,7 @@ await refreshable(async ({ refresh, signal }) => {
       async onInit() {
         const effectHandles = [
           effect(() => setShortcuts(shortcuts.value)),
-          effect(() => {
-            if (actions.value.length > 0) {
-              setActions(actions.value)
-            } else {
-              setFlagValue(undefined)
-            }
-          }),
+          effect(() => setActions(actions.value)),
           effect(() => setName(currentConversationTitle.value ?? "KitGPT")),
           effect(
             () =>
@@ -370,6 +366,7 @@ await refreshable(async ({ refresh, signal }) => {
       },
       width: PROMPT_WIDTH,
       height: CHAT_WINDOW_HEIGHT,
+      input: refreshCount === 0 ? (flag.pass as string) : undefined,
       shortcuts: shortcuts.value,
       placeholder: `✨ Ask ${currentProviderName.value ?? "AI"} anything...`,
       actions: actions.value,
