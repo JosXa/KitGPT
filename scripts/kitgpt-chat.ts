@@ -166,7 +166,10 @@ effect(function getSuggestionsOnAssistantMessage() {
 
 subscribeToMessageEdits((msgSignal, idx) => chat.setMessage?.(idx, buildKitMessage(msgSignal)))
 
+const optionsShown = signal(false)
+
 const shortcuts = computed(() => {
+  //#region Left bar
   const res: Shortcut[] = [
     {
       name: "Close",
@@ -199,44 +202,64 @@ const shortcuts = computed(() => {
     bar: "left",
   })
 
-  const platformStatisticsUrl = currentModel.value
-    ? getProviderOrThrow(currentModel.value.provider as Provider).platformStatisticsUrl
-    : undefined
+  //#endregion
 
-  if (platformStatisticsUrl) {
-    res.push({
-      name: "Usage",
-      key: `${cmd}+u`,
-      onPress: () => {
-        // noinspection JSArrowFunctionBracesCanBeRemoved
-        open(platformStatisticsUrl)
+  //#region Right bar (options)
+
+  if (optionsShown.value) {
+    const platformStatisticsUrl = currentModel.value
+      ? getProviderOrThrow(currentModel.value.provider as Provider).platformStatisticsUrl
+      : undefined
+
+    if (platformStatisticsUrl) {
+      res.push({
+        name: "Usage",
+        key: `${cmd}+u`,
+        onPress: () => {
+          // noinspection JSArrowFunctionBracesCanBeRemoved
+          open(platformStatisticsUrl)
+        },
+        bar: "right",
+      })
+    }
+
+    res.push(
+      {
+        name: "System Prompt",
+        key: `${cmd}+p`,
+        onPress: async () => {
+          await configureSystemPrompt()
+          refreshHandle.value?.()
+        },
+        bar: "right",
+        visible: true,
       },
-      bar: "right",
-    })
+      {
+        name: "Model",
+        key: `${cmd}+m`,
+        onPress: async () => {
+          await switchModel()
+          refreshHandle.value?.()
+        },
+        bar: "right",
+        visible: true,
+      },
+    )
   }
 
-  res.push(
-    {
-      name: "System Prompt",
-      key: `${cmd}+p`,
-      onPress: async () => {
-        await configureSystemPrompt()
-        refreshHandle.value?.()
-      },
-      bar: "right",
-      visible: true,
-    },
-    {
-      name: "Model",
-      key: `${cmd}+m`,
-      onPress: async () => {
-        await switchModel()
-        refreshHandle.value?.()
+  
+  res.push(      {
+      name: optionsShown.value ? "Hide Options" : "Show Options",
+      key: `${cmd}+o`,
+      onPress: () => {
+        optionsShown.value = !optionsShown.value
       },
       bar: "right",
       visible: true,
     },
   )
+
+  //#endregion
 
   return res
 })
@@ -320,8 +343,6 @@ await refreshable(async ({ refresh, signal }) => {
 
   // noinspection JSArrowFunctionBracesCanBeRemoved
   return await chat({
-    width: PROMPT_WIDTH,
-    height: CHAT_WINDOW_HEIGHT,
     async onInit() {
       const effectHandles = [
         effect(() => setShortcuts(shortcuts.value)),
@@ -340,6 +361,8 @@ await refreshable(async ({ refresh, signal }) => {
         return
       }
     },
+    width: PROMPT_WIDTH,
+    height: CHAT_WINDOW_HEIGHT,
     shortcuts: shortcuts.value,
     placeholder: `✨ Ask ${currentProviderName.value ?? "AI"} anything...`,
     actions: actions.value,
