@@ -3,6 +3,7 @@
 // Author: @JosXa
 // Trigger: chat
 // Shortcut: cmd alt ä
+// Pass: True
 
 import "@johnlindquist/kit"
 
@@ -166,7 +167,7 @@ effect(function getSuggestionsOnAssistantMessage() {
 
 subscribeToMessageEdits((msgSignal, idx) => chat.setMessage?.(idx, buildKitMessage(msgSignal)))
 
-const optionsShown = signal(false)
+const showOptions = signal(false)
 
 const shortcuts = computed(() => {
   //#region Left bar
@@ -206,58 +207,54 @@ const shortcuts = computed(() => {
 
   //#region Right bar (options)
 
-  if (optionsShown.value) {
-    const platformStatisticsUrl = currentModel.value
-      ? getProviderOrThrow(currentModel.value.provider as Provider).platformStatisticsUrl
-      : undefined
+  const platformStatisticsUrl = currentModel.value
+    ? getProviderOrThrow(currentModel.value.provider as Provider).platformStatisticsUrl
+    : undefined
 
-    if (platformStatisticsUrl) {
-      res.push({
-        name: "Usage",
-        key: `${cmd}+u`,
-        onPress: () => {
-          // noinspection JSArrowFunctionBracesCanBeRemoved
-          open(platformStatisticsUrl)
-        },
-        bar: "right",
-      })
-    }
+  const visibilityProps = showOptions.value ? ({ bar: "right", visible: true } as const) : { visible: false }
 
-    res.push(
-      {
-        name: "System Prompt",
-        key: `${cmd}+p`,
-        onPress: async () => {
-          await configureSystemPrompt()
-          refreshHandle.value?.()
-        },
-        bar: "right",
-        visible: true,
+  if (platformStatisticsUrl) {
+    res.push({
+      name: "Usage",
+      key: `${cmd}+u`,
+      onPress: () => {
+        // noinspection JSArrowFunctionBracesCanBeRemoved
+        open(platformStatisticsUrl)
       },
-      {
-        name: "Model",
-        key: `${cmd}+m`,
-        onPress: async () => {
-          await switchModel()
-          refreshHandle.value?.()
-        },
-        bar: "right",
-        visible: true,
-      },
-    )
+      ...visibilityProps,
+    })
   }
 
-  
-  res.push(      {
-      name: optionsShown.value ? "Hide Options" : "Show Options",
-      key: `${cmd}+o`,
-      onPress: () => {
-        optionsShown.value = !optionsShown.value
+  res.push(
+    {
+      name: "System Prompt",
+      key: `${cmd}+p`,
+      onPress: async () => {
+        await configureSystemPrompt()
+        refreshHandle.value?.()
       },
-      bar: "right",
-      visible: true,
+      ...visibilityProps,
+    },
+    {
+      name: "Model",
+      key: `${cmd}+m`,
+      onPress: async () => {
+        await switchModel()
+        refreshHandle.value?.()
+      },
+      ...visibilityProps,
     },
   )
+
+  res.push({
+    name: showOptions.value ? "Hide Options" : "Show Options",
+    key: `${cmd}+o`,
+    onPress: () => {
+      showOptions.value = !showOptions.value
+    },
+    bar: "right",
+    visible: true,
+  })
 
   //#endregion
 
@@ -285,7 +282,7 @@ const actions = computed(() => {
   ] as const
 
   result.push(
-    ...suggestionsMerged.flatMap((x, i) => [
+    ...suggestionsMerged.flatMap((x) => [
       {
         name: `${x.prefix}${x.emoji} ${x.text}`,
         group: "Send 🔺",
@@ -326,9 +323,11 @@ const currentProviderName = computed(() =>
   currentModel.value ? getProviderOrThrow(currentModel.value!.provider as Provider).name : undefined,
 )
 
-
-
 const footer = computed(() => {
+  if (showOptions.value) {
+    return "" // Not enough space
+  }
+
   switch (currentStatus.value) {
     case Status.Responding: {
       return `${currentProviderName.value ?? "AI"} is responding...`
@@ -341,36 +340,44 @@ const footer = computed(() => {
 await refreshable(async ({ refresh, signal }) => {
   refreshHandle.value = refresh
 
-  // noinspection JSArrowFunctionBracesCanBeRemoved
-  return await chat({
-    async onInit() {
-      const effectHandles = [
-        effect(() => setShortcuts(shortcuts.value)),
-        effect(() => setActions(actions.value)),
-        effect(() => setName(currentConversationTitle.value ?? "KitGPT")),
-        effect(
-          () => currentModel.value && setDescription(`${currentModel.value.provider} - ${currentModel.value.modelId}`),
-        ),
-        effect(() => setFooter(footer.value)),
-      ]
-      signal.addEventListener("abort", () => effectHandles.forEach((fn) => fn()))
+  try {
+    // noinspection JSArrowFunctionBracesCanBeRemoved
+    return await chat({
+      async onInit() {
+        const effectHandles = [
+          effect(() => setShortcuts(shortcuts.value)),
+          effect(() => {
+            if (actions.value.length > 0) {
+              setActions(actions.value)
+            } else {
+              setFlagValue(undefined)
+            }
+          }),
+          effect(() => setName(currentConversationTitle.value ?? "KitGPT")),
+          effect(
+            () =>
+              currentModel.value && setDescription(`${currentModel.value.provider} - ${currentModel.value.modelId}`),
+          ),
+          effect(() => setFooter(footer.value)),
+        ]
+        signal.addEventListener("abort", () => effectHandles.forEach((fn) => fn()))
 
-      if (!currentModel.value) {
-        await switchModel()
-        refresh()
-        return
-      }
-    },
-    width: PROMPT_WIDTH,
-    height: CHAT_WINDOW_HEIGHT,
-    shortcuts: shortcuts.value,
-    placeholder: `✨ Ask ${currentProviderName.value ?? "AI"} anything...`,
-    actions: actions.value,
-    previewWidthPercent: PREVIEW_WIDTH_PERCENT,
-    strict: true, // No empty messages
-    alwaysOnTop: false,
-    keepPreview: false,
-    css: `
+        if (!currentModel.value) {
+          await switchModel()
+          refresh()
+          return
+        }
+      },
+      width: PROMPT_WIDTH,
+      height: CHAT_WINDOW_HEIGHT,
+      shortcuts: shortcuts.value,
+      placeholder: `✨ Ask ${currentProviderName.value ?? "AI"} anything...`,
+      actions: actions.value,
+      previewWidthPercent: PREVIEW_WIDTH_PERCENT,
+      strict: true, // No empty messages
+      alwaysOnTop: false,
+      keepPreview: false,
+      css: `
 div.kit-mbox > ul, ol {
   margin-block-start: 0 !important;
 }
@@ -379,12 +386,16 @@ div.kit-mbox > ul, ol {
   border: 0;
 }
 `,
-    onEscape: () => {
-      abortResponseStream()
-    },
-    onSubmit(content) {
-      content && messages.push({ role: "user", content })
-      refresh()
-    },
-  })
+      onEscape: () => {
+        abortResponseStream()
+      },
+      onSubmit(content) {
+        content && messages.push({ role: "user", content })
+        refresh()
+      },
+    })
+  } catch (err) {
+    await error(err)
+    refresh()
+  }
 })

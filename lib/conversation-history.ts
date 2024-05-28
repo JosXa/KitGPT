@@ -62,6 +62,7 @@ export async function showConversationHistory() {
             name: convo.title ?? "Untitled",
             description: `Started: ${convo.started}`,
             value: convo.id,
+            hasPreview: true,
             preview: async () => {
               const details = await getFullConvoCached(convo.id)
               return buildPreview(details)
