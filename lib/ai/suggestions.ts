@@ -1,8 +1,8 @@
-import "@johnlindquist/kit"
-import { generateObject } from "ai"
-import { z } from "zod"
-import { NUM_SUGGESTIONS } from "../settings"
-import { currentModel, currentSuggestions, messages, systemPrompt } from "../store"
+import '@johnlindquist/kit'
+import { generateObject } from 'ai'
+import { z } from 'zod'
+import { NUM_SUGGESTIONS } from '../settings'
+import { currentModel, currentSuggestions, messages } from '../store'
 
 const followupQuestionsSchema = z.object({
   moreExamplesQuestion: z.string(),
@@ -16,29 +16,38 @@ const followupQuestionsSchema = z.object({
 
 export type FollowupQuestions = z.infer<typeof followupQuestionsSchema>
 
-messages.$length!.subscribe(() => (currentSuggestions.value = undefined))
+messages.$length!.subscribe(() => {
+  currentSuggestions.value = undefined
+})
 
 export async function getSuggestions({
-  includeSystemPromptInContext = false,
   contextLookbackMessages = 4,
-}: { includeSystemPromptInContext?: boolean; contextLookbackMessages?: number } = {}) {
+}: { contextLookbackMessages?: number } = {}) {
   const context = messages.slice(-contextLookbackMessages)
-  context.push({
+  context.unshift({
     role: "system",
-    content: `Please list ${NUM_SUGGESTIONS} possible follow-up questions I could ask about this. Also give me a good question to ask if I'm looking for more examples.
-      Note: The questions should all be from the user's perspective`,
+    content: `For the following conversation, please list ${NUM_SUGGESTIONS} possible follow-up questions I could 
+    ask. Also give me one good question to ask if I'm looking for more examples.
+    Note: The questions should all be from the user's (my) perspective.`,
   })
+
+  const lastMsg = context[context.length - 1]
+  if (lastMsg && lastMsg.role === "assistant") {
+    context.push({
+      role: "user",
+      content: `Please list ${NUM_SUGGESTIONS} possible follow-up questions I could ask about this. Also give me a good question to ask if I'm looking for more examples.`,
+    })
+  }
 
   try {
     const { object } = await generateObject({
       model: currentModel.value!,
       schema: followupQuestionsSchema,
       messages: context,
-      system: includeSystemPromptInContext ? systemPrompt.value : undefined,
     })
 
     currentSuggestions.value = object
   } catch (err) {
-    warn(new Error("Unable to generate suggestions", { cause: err }))
+    warn(`Unable to generate suggestions: ${err instanceof Error ? err.message : err}`)
   }
 }

@@ -7,7 +7,6 @@
 import "@johnlindquist/kit"
 
 import type { Action, Shortcut } from "@johnlindquist/kit"
-
 import { error, refreshable } from "@josxa/kit-utils"
 import { computed, effect, signal, untracked } from "@preact/signals-core"
 
@@ -18,7 +17,7 @@ import { getSuggestions } from "../lib/ai/suggestions"
 import configureSystemPrompt from "../lib/configureSystemPrompt"
 import { showConversationHistory } from "../lib/conversation-history"
 import { type Provider, getProviderOrThrow, switchModel } from "../lib/models"
-import { PREVIEW_WIDTH_PERCENT, PROMPT_WIDTH } from "../lib/settings"
+import { CHAT_WINDOW_HEIGHT, PREVIEW_WIDTH_PERCENT, PROMPT_WIDTH } from "../lib/settings"
 import {
   currentConversationTitle,
   currentModel,
@@ -246,29 +245,44 @@ const actions = computed(() => {
   const result: Action[] = []
 
   const sugg = currentSuggestions.value
+
   if (!sugg) {
     return result
   }
 
-  const zeroWidthSpace = " " // Make items appear at the top
-  result.push({
-    name: `${zeroWidthSpace}➕ ${sugg.moreExamplesQuestion}`,
-    onAction: () => {
-      chat.addMessage?.({ title: "user", text: md(sugg.moreExamplesQuestion), position: "right" })
-      messages.push({ role: "user", content: sugg.moreExamplesQuestion })
-    },
-    visible: true,
-  })
+  const ZERO_WIDTH_SPACE = " " // Make items appear at the top
+
+  const suggestionsMerged = [
+    { prefix: ZERO_WIDTH_SPACE, text: `${sugg.moreExamplesQuestion}`, emoji: "➕" },
+    ...sugg.followupQuestions.map((x) => ({
+      prefix: "",
+      text: x.question,
+      emoji: x.emoji,
+    })),
+  ] as const
 
   result.push(
-    ...sugg.followupQuestions.map((x) => ({
-      name: `${x.emoji} ${x.question}`,
-      onAction: () => {
-        chat.addMessage?.({ title: "user", text: md(x.question), position: "right" })
-        messages.push({ role: "user", content: x.question })
+    ...suggestionsMerged.flatMap((x, i) => [
+      {
+        name: `${x.prefix}${x.emoji} ${x.text}`,
+        group: "Send 🔺",
+        onAction: () => {
+          chat.addMessage?.({ title: "user", text: md(x.text), position: "right" })
+          messages.push({ role: "user", content: x.text })
+          // TODO: Hide actions
+        },
+        visible: true,
       },
-      visible: true,
-    })),
+      {
+        name: `${x.prefix}${x.emoji} ${x.text} 🔻`,
+        group: "Use as template 🔻",
+        onAction: () => {
+          setInput(x.text)
+          // TODO: Hide actions
+        },
+        visible: true,
+      },
+    ]),
   )
 
   return result
@@ -289,6 +303,8 @@ const currentProviderName = computed(() =>
   currentModel.value ? getProviderOrThrow(currentModel.value!.provider as Provider).name : undefined,
 )
 
+
+
 const footer = computed(() => {
   switch (currentStatus.value) {
     case Status.Responding: {
@@ -305,6 +321,7 @@ await refreshable(async ({ refresh, signal }) => {
   // noinspection JSArrowFunctionBracesCanBeRemoved
   return await chat({
     width: PROMPT_WIDTH,
+    height: CHAT_WINDOW_HEIGHT,
     async onInit() {
       const effectHandles = [
         effect(() => setShortcuts(shortcuts.value)),
@@ -338,7 +355,7 @@ div.kit-mbox > ul, ol {
 .rce-mbox:not(.rce-mbox-right) {
   border: 0;
 }
-    `,
+`,
     onEscape: () => {
       abortResponseStream()
     },
