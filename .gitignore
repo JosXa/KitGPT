@@ -105,10 +105,9 @@ dist
 .history
 
 # Script Kit
-kenvs
 .scripts
 .widgets
-cache
-tmp
-db
-bin
+/cache
+/tmp
+/db
+/bin

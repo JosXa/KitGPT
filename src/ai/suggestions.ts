@@ -1,8 +1,7 @@
-import '@johnlindquist/kit'
-import { generateObject } from 'ai'
-import { z } from 'zod'
-import { NUM_SUGGESTIONS } from '../settings'
-import { currentModel, currentSuggestions, messages } from '../store'
+import { generateObject } from "ai"
+import { z } from "zod"
+import { NUM_SUGGESTIONS } from "../settings"
+import { currentModel, currentSuggestions, messages } from "../store"
 
 const followupQuestionsSchema = z.object({
   moreExamplesQuestion: z.string(),
@@ -20,9 +19,7 @@ messages.$length!.subscribe(() => {
   currentSuggestions.value = undefined
 })
 
-export async function getSuggestions({
-  contextLookbackMessages = 4,
-}: { contextLookbackMessages?: number } = {}) {
+export async function getSuggestions({ contextLookbackMessages = 4 }: { contextLookbackMessages?: number } = {}) {
   const context = messages.slice(-contextLookbackMessages)
   context.unshift({
     role: "system",

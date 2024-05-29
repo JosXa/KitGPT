@@ -1,28 +1,17 @@
-import type { Choice } from "@johnlindquist/kit"
-import { refreshable } from "@josxa/kit-utils"
+import type { Choice } from "@johnlindquist/kit/types"
 import { batch } from "@preact/signals-core"
 import type { CoreMessage } from "ai"
-import type { Conversation } from "./schema"
-import { PROMPT_WIDTH } from "./settings"
 import {
-  currentConversationId,
-  currentConversationTitle,
-  currentSuggestions,
   deleteConversation,
   getAllConversationMetadata,
   getFullConversation,
-  messages,
-  resetConversation,
-  systemPrompt,
   updateConversation,
-} from "./store"
-
-const titleCase = (str: string) => {
-  if (!str) {
-    return ""
-  }
-  return str[0]?.toUpperCase() + str.slice(1)
-}
+} from "../database/conversations"
+import type { Conversation } from "../database/schema"
+import { PROMPT_WIDTH } from "../settings"
+import { currentConversationId, currentConversationTitle, messages, resetConversation } from "../store"
+import { titleCase } from "../utils/string-utils"
+import { KitGptScreen } from "./KitGptScreen"
 
 function buildPreview(convo: Conversation) {
   return md(
@@ -37,7 +26,7 @@ function buildPreview(convo: Conversation) {
   )
 }
 
-let cache = new Map<number, Conversation>()
+const cache = new Map<number, Conversation>()
 
 const getFullConvoCached = async (conversationId: number) => {
   if (cache.has(conversationId)) {
@@ -48,9 +37,11 @@ const getFullConvoCached = async (conversationId: number) => {
   return val
 }
 
-export async function showConversationHistory() {
+export default class ConversationHistory extends KitGptScreen<void> {
+  name = "conversation-history"
   cache = new Map()
-  return await refreshable<void>(async ({ refresh, resolve }) => {
+
+  async render({ refresh, resolve }) {
     const metadata = await getAllConversationMetadata()
 
     const selectedConvoId = await arg<number>({
@@ -128,14 +119,18 @@ export async function showConversationHistory() {
     if (selectedConvoId) {
       await loadConversation(selectedConvoId)
     }
-  })
+  }
 }
 
 async function loadConversation(conversationId: number) {
   const conversation = await getFullConvoCached(conversationId)
 
   resetConversation()
-  batch(() => messages.push(...(conversation.messages ?? [])))
+  batch(() => {
+    messages.push(...(conversation.messages ?? []))
+    currentConversationTitle.value = conversation.title ?? undefined
+    currentConversationId.value = conversation.id
+  })
 }
 
 async function renameConversationPrompt(conversation: Conversation) {

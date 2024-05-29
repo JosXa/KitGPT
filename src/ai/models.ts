@@ -1,13 +1,12 @@
 // noinspection JSArrowFunctionBracesCanBeRemoved
 
-import { error, refreshable, startSpinner } from "@josxa/kit-utils"
-import { type LanguageModel, generateText, streamText } from "ai"
-import type { EnvConfig } from "../../../../.kit/types/kit"
-import { PROMPT_WIDTH } from "./settings"
-import { currentModel } from "./store"
-import { typedObjectEntries, typedObjectValues } from "./typed-objects"
+import "@johnlindquist/kit"
+import type { EnvConfig } from "@johnlindquist/kit/types/kit"
+import { type LanguageModel, generateText } from "ai"
+import { currentModel } from "../store"
+import { typedObjectValues } from "../utils/typed-objects"
 
-const PROVIDERS = {
+export const PROVIDERS = {
   "openai.chat": {
     name: "OpenAI",
     getModel: async (modelId: string) => (await import("@ai-sdk/openai")).openai(modelId),
@@ -32,7 +31,7 @@ const PROVIDERS = {
       "gpt-3.5-turbo-0613",
       "gpt-3.5-turbo-16k-0613",
     ],
-    ensureAuthenticated: async (props) => {
+    async ensureAuthenticated(props) {
       await env("OPENAI_API_KEY", {
         hint: `Grab a key from <a href="https://platform.openai.com/account/api-keys">here</a>`,
         ...props,
@@ -45,7 +44,7 @@ const PROVIDERS = {
     getModel: async (modelId: string) => (await import("@ai-sdk/anthropic")).anthropic(modelId),
     // Keep in sync with https://github.com/vercel/ai/blob/main/packages/anthropic/src/anthropic-messages-settings.ts
     knownModels: ["claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307"],
-    ensureAuthenticated: async (props) => {
+    async ensureAuthenticated(props) {
       await env("ANTHROPIC_API_KEY", {
         hint: `Grab a key from <a href="https://console.anthropic.com/settings/keys">here</a>`,
         ...props,
@@ -63,7 +62,7 @@ const PROVIDERS = {
       "models/gemini-pro",
       "models/gemini-pro-vision",
     ],
-    ensureAuthenticated: async (props) => {
+    async ensureAuthenticated(props) {
       await env("GOOGLE_GENERATIVE_AI_API_KEY", {
         hint: `Grab a key from <a href="https://aistudio.google.com/app/apikey">here</a>`,
         ...props,
@@ -76,7 +75,7 @@ const PROVIDERS = {
     getModel: async (modelId: string) => (await import("@ai-sdk/google-vertex")).vertex(modelId),
     // Keep in sync with https://github.com/vercel/ai/blob/main/packages/google-vertex/src/google-vertex-settings.ts
     knownModels: ["gemini-1.0-pro", "gemini-1.0-pro-vision"],
-    ensureAuthenticated: async (props) => {
+    async ensureAuthenticated(props) {
       await env("GOOGLE_VERTEX_API_KEY", {
         hint: "Enter the Google Vertex API key",
         ...props,
@@ -104,7 +103,7 @@ const PROVIDERS = {
       "mistral-medium-latest",
       "mistral-large-latest",
     ],
-    ensureAuthenticated: async (props) => {
+    async ensureAuthenticated(props) {
       await env("MISTRAL_API_KEY", {
         hint: `Grab a key from <a href="https://console.mistral.ai/api-keys/">here</a>`,
         ...props,
@@ -139,7 +138,7 @@ export async function getModel(provider: Provider, modelId: string) {
   return await p.getModel(modelId)
 }
 
-async function testProvider() {
+export async function testProvider() {
   try {
     const result = await generateText({
       model: currentModel.value!,
@@ -149,103 +148,4 @@ async function testProvider() {
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : String(err) }
   }
-}
-
-export async function switchModel() {
-  const canAbort = !!currentModel.value
-
-  await refreshable<void>(async ({ refresh, resolve }) => {
-    const providerKey = await select(
-      {
-        hint: "Please select a provider",
-        multiple: false,
-        width: PROMPT_WIDTH,
-        strict: true,
-        defaultValue: currentModel.value?.provider,
-        shortcuts: canAbort
-          ? [
-              {
-                name: "Back to Chat",
-                key: "escape",
-                visible: true,
-                bar: "right",
-                onPress() {
-                  resolve()
-                },
-              },
-              {
-                name: "Back to Chat",
-                key: `${cmd}+m`,
-                visible: false,
-                bar: "right",
-                onPress() {
-                  resolve()
-                },
-              },
-            ]
-          : undefined,
-      },
-      typedObjectEntries(PROVIDERS).map(([key, p]) => ({
-        name: p.name,
-        value: key,
-      })),
-    )
-
-    const provider = PROVIDERS[providerKey]
-
-    await provider.ensureAuthenticated({
-      width: PROMPT_WIDTH,
-      shortcuts: [
-        {
-          name: "Cancel",
-          key: "escape",
-          visible: true,
-          bar: "right",
-          onPress() {
-            refresh()
-          },
-        },
-      ],
-    })
-
-    const modelId = await select<string>(
-      {
-        hint: `Please select the ${provider.name} chat completion model`,
-        width: PROMPT_WIDTH,
-        multiple: false,
-        strict: false,
-        defaultValue: currentModel.value?.modelId,
-        shortcuts: [
-          {
-            name: "Go Back to Provider Selection",
-            key: "escape",
-            visible: true,
-            bar: "right",
-            onPress() {
-              refresh()
-            },
-          },
-        ],
-      },
-      provider.knownModels,
-    )
-
-    currentModel.value = await provider.getModel(modelId)
-
-    const spinner = startSpinner("spaceX", { initialMessage: "Testing connection..." }, { width: PROMPT_WIDTH })
-    spinner.message = "Testing connection..." // TODO: There's a bug with the initialMessage
-    const testResult = await testProvider()
-    spinner.stop()
-
-    if (!testResult.ok) {
-      await div({
-        html: md(`# Cannot connect to ${currentModel.value.provider}
-      
-**Error:** <u>${testResult.error}</u>
-
-In case your access token is expired, please edit your \`~/.kenv/.env\` file.`),
-        width: PROMPT_WIDTH,
-      })
-    }
-  })
 }

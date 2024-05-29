@@ -1,8 +1,7 @@
-import "@johnlindquist/kit"
 import { generateObject } from "ai"
 import { z } from "zod"
 import { currentConversationTitle, currentModel, messages } from "../store"
-import { truncate } from "../utils"
+import { truncate } from "../utils/string-utils"
 
 const conversationTitleSchema = z.object({
   conversationTitle: z.string(),
