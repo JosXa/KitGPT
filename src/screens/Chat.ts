@@ -10,20 +10,15 @@ import { generateNewTitleForConversation } from "../ai/conversation-title"
 import { type Provider, getProviderOrThrow } from "../ai/models"
 import { getSuggestions } from "../ai/suggestions"
 import { CHAT_WINDOW_HEIGHT, PREVIEW_WIDTH_PERCENT, PROMPT_WIDTH } from "../settings"
-import {
-  currentConversationTitle,
-  currentModel,
-  currentSuggestions,
-  messages,
-  resetConversation,
-  subscribeToMessageEdits,
-  systemPrompt,
-} from "../store"
+import { currentScreen } from "../store"
+import { currentSuggestions, messages, subscribeToMessageEdits } from "../store/chat"
+import { currentConversationTitle, resetConversation } from "../store/conversations"
+import { currentModel, systemPrompt } from "../store/settings"
 import { titleCase } from "../utils/string-utils"
 import ConfigureSystemPrompt from "./ConfigureSystemPrompt"
 import ConversationHistory from "./ConversationHistory"
-import { KitGptScreen } from "./KitGptScreen"
 import SwitchModel from "./SwitchModel"
+import { KitGptScreen } from "./base/KitGptScreen"
 
 enum Status {
   Ready = "Ready",
@@ -389,7 +384,18 @@ export default class Chat extends KitGptScreen<Message[] | undefined> {
             ),
             effect(() => setFooter(footer.value)),
           ]
-          signal.addEventListener("abort", () => effectHandles.forEach((fn) => fn()))
+
+          const navigationEffectHandle = effect(() => {
+            if (currentScreen.value !== "chat") {
+              // Do not perform updates when we navigate away
+              effectHandles.forEach((fn) => fn())
+            }
+          })
+
+          signal.addEventListener("abort", () => {
+            effectHandles.forEach((fn) => fn())
+            navigationEffectHandle()
+          })
 
           if (!currentModel.value) {
             await new SwitchModel().run()

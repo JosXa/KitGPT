@@ -1,6 +1,7 @@
 import { refreshable } from "@josxa/kit-utils"
 import type { RefreshableControls } from "@josxa/kit-utils"
-import { currentScreen } from "../store"
+
+import { currentScreen } from "../../store"
 
 export abstract class KitGptScreen<T> {
   protected abstract name: string

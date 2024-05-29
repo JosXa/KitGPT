@@ -1,9 +1,9 @@
 import { type RefreshableControls, startSpinner } from "@josxa/kit-utils"
 import { PROVIDERS, testProvider } from "../ai/models"
 import { PROMPT_WIDTH } from "../settings"
-import { currentModel } from "../store"
+import { currentModel } from "../store/settings"
 import { typedObjectEntries } from "../utils/typed-objects"
-import { KitGptScreen } from "./KitGptScreen"
+import { KitGptScreen } from "./base/KitGptScreen"
 
 export default class SwitchModel extends KitGptScreen<void> {
   name = "switch-model"

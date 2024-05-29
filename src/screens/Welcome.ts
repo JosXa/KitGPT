@@ -1,7 +1,7 @@
 import { ALL_PROVIDER_NAMES } from "../ai/models"
 import { PROMPT_WIDTH } from "../settings"
-import { currentModel, welcomeShown } from "../store"
-import { KitGptScreen } from "./KitGptScreen"
+import { currentModel, welcomeShown } from "../store/settings"
+import { KitGptScreen } from "./base/KitGptScreen"
 
 export default class Welcome extends KitGptScreen<void> {
   name = "Welcome"

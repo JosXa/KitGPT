@@ -3,7 +3,7 @@
 import "@johnlindquist/kit"
 import type { EnvConfig } from "@johnlindquist/kit/types/kit"
 import { type LanguageModel, generateText } from "ai"
-import { currentModel } from "../store"
+import { currentModel } from "../store/settings"
 import { typedObjectValues } from "../utils/typed-objects"
 
 export const PROVIDERS = {

@@ -1,6 +1,8 @@
 import { generateObject } from "ai"
 import { z } from "zod"
-import { currentConversationTitle, currentModel, messages } from "../store"
+import { messages } from "../store/chat"
+import { currentConversationTitle } from "../store/conversations"
+import { currentModel } from "../store/settings"
 import { truncate } from "../utils/string-utils"
 
 const conversationTitleSchema = z.object({

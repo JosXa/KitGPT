@@ -11,7 +11,8 @@ import Chat from "../src/screens/Chat"
 
 import { ensureDbInitialized } from "../src/database/db"
 import Welcome from "../src/screens/Welcome"
-import { welcomeShown } from "../src/store"
+
+import { welcomeShown } from "../src/store/settings"
 
 await ensureDbInitialized(({ backupPath }) =>
   div(

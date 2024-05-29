@@ -9,9 +9,10 @@ import {
 } from "../database/conversations"
 import type { Conversation } from "../database/schema"
 import { PROMPT_WIDTH } from "../settings"
-import { currentConversationId, currentConversationTitle, messages, resetConversation } from "../store"
+import { messages } from "../store/chat"
+import { currentConversationId, currentConversationTitle, resetConversation } from "../store/conversations"
 import { titleCase } from "../utils/string-utils"
-import { KitGptScreen } from "./KitGptScreen"
+import { KitGptScreen } from "./base/KitGptScreen"
 
 function buildPreview(convo: Conversation) {
   return md(

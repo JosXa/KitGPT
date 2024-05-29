@@ -1,6 +1,6 @@
 import { PROMPT_WIDTH } from "../settings"
-import { systemPrompt } from "../store"
-import { KitGptScreen } from "./KitGptScreen"
+import { systemPrompt } from "../store/settings"
+import { KitGptScreen } from "./base/KitGptScreen"
 
 export default class ConfigureSystemPrompt extends KitGptScreen<string | undefined> {
   name = "configure-system-prompt"
