@@ -88,6 +88,9 @@ export default class ConversationHistory extends KitGptScreen<void> {
                 async onAction() {
                   await deleteConversation(convo.id)
                   cache.delete(convo.id)
+                  if (convo.id === currentConversationId.value) {
+                    resetConversation()
+                  }
                   refresh()
                 },
               },
@@ -154,5 +157,8 @@ async function renameConversationPrompt(conversation: Conversation) {
   if (newTitle !== conversation.title) {
     await updateConversation(conversation.id, { title: newTitle })
     cache.set(conversation.id, { ...conversation, title: newTitle })
+    if (conversation.id === currentConversationId.value) {
+      currentConversationTitle.value = newTitle
+    }
   }
 }
