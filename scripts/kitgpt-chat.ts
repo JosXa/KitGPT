@@ -6,6 +6,7 @@
 // Pass: True
 
 import "@johnlindquist/kit"
+// Cache: false (custom metadata)
 
 import Chat from "../src/screens/Chat"
 
