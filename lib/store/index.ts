@@ -3,4 +3,4 @@ import "./conversations"
 import "./settings"
 import "./chat"
 
-export const currentScreen = signal<string | undefined>(undefined)
+export const activeScreen = signal<string | undefined>(undefined)

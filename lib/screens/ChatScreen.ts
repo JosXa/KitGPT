@@ -10,7 +10,7 @@ import { generateNewTitleForConversation } from "../ai/conversation-title"
 import { type Provider, getProviderOrThrow } from "../ai/models"
 import { getSuggestions } from "../ai/suggestions"
 import { CHAT_WINDOW_HEIGHT, PREVIEW_WIDTH_PERCENT, PROMPT_WIDTH } from "../settings"
-import { currentScreen } from "../store"
+import { activeScreen } from "../store"
 import { currentSuggestions, messages, subscribeToMessageEdits } from "../store/chat"
 import { currentConversationTitle, resetConversation } from "../store/conversations"
 import { currentModel, systemPrompt } from "../store/settings"
@@ -351,7 +351,7 @@ export default class ChatScreen extends KitGptScreen<Message[] | undefined> {
           ]
 
           const navigationEffectHandle = effect(() => {
-            if (currentScreen.value !== "chat") {
+            if (activeScreen.value !== "chat") {
               // Do not perform updates when we navigate away
               effectHandles.forEach((fn) => fn())
             }

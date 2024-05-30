@@ -1,7 +1,7 @@
 import { refreshable } from "@josxa/kit-utils"
 import type { RefreshableControls } from "@josxa/kit-utils"
 
-import { currentScreen } from "../../store"
+import { activeScreen } from "../../store"
 
 export abstract class KitGptScreen<T> {
   protected abstract name: string
@@ -14,10 +14,10 @@ export abstract class KitGptScreen<T> {
    */
   public async run(): Promise<T> {
     const result = await refreshable<T>((controls) => {
-      currentScreen.value = this.name
+      activeScreen.value = this.name
       return this.render(controls)
     })
-    currentScreen.value = undefined
+    activeScreen.value = undefined
     return result
   }
 }
