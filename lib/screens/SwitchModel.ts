@@ -21,7 +21,7 @@ export default class SwitchModel extends KitGptScreen<void> {
         shortcuts: canAbort
           ? [
               {
-                name: "Back to Chat",
+                name: "Back",
                 key: "escape",
                 visible: true,
                 bar: "right",
@@ -30,7 +30,7 @@ export default class SwitchModel extends KitGptScreen<void> {
                 },
               },
               {
-                name: "Back to Chat",
+                name: "Back",
                 key: `${cmd}+m`,
                 visible: false,
                 bar: "right",
@@ -94,7 +94,7 @@ export default class SwitchModel extends KitGptScreen<void> {
 
     if (!testResult.ok) {
       await div({
-        html: md(`# Cannot connect to ${currentModel.value.provider}
+        html: md(`# Cannot connect to ${currentModel.value!.provider}
       
 **Error:** <u>${testResult.error}</u>
 

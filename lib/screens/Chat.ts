@@ -1,6 +1,6 @@
 import "@johnlindquist/kit"
 
-import type { Action, Shortcut } from "@johnlindquist/kit"
+import type { Shortcut } from "@johnlindquist/kit"
 import { type RefreshableControls, showError } from "@josxa/kit-utils"
 import { batch, computed, effect, signal, untracked } from "@preact/signals-core"
 
@@ -15,8 +15,8 @@ import { currentSuggestions, messages, subscribeToMessageEdits } from "../store/
 import { currentConversationTitle, resetConversation } from "../store/conversations"
 import { currentModel, systemPrompt } from "../store/settings"
 import { titleCase } from "../utils/string-utils"
-import ConfigureSystemPrompt from "./ConfigureSystemPrompt"
 import ConversationHistory from "./ConversationHistory"
+import Options from "./Options"
 import SwitchModel from "./SwitchModel"
 import { KitGptScreen } from "./base/KitGptScreen"
 
@@ -191,50 +191,24 @@ const shortcuts = computed(() => {
 
   //#region Right bar (options)
 
-  const platformStatisticsUrl = currentModel.value
-    ? getProviderOrThrow(currentModel.value.provider as Provider).platformStatisticsUrl
-    : undefined
-
-  const visibilityProps = showOptions.value ? ({ bar: "right", visible: true } as const) : { visible: false }
-
-  if (platformStatisticsUrl) {
-    res.push({
-      name: "Usage",
-      key: `${cmd}+u`,
-      onPress: () => {
-        // noinspection JSArrowFunctionBracesCanBeRemoved
-        open(platformStatisticsUrl)
-      },
-      ...visibilityProps,
-    })
-  }
-
-  res.push(
-    {
-      name: "System Prompt",
-      key: `${cmd}+p`,
-      onPress: async () => {
-        await new ConfigureSystemPrompt().run()
-        refreshHandle.value?.()
-      },
-      ...visibilityProps,
+  res.push({
+    id: "model",
+    name: "Model",
+    key: `${cmd}+m`,
+    onPress: async () => {
+      await new SwitchModel().run()
+      refreshHandle.value?.()
     },
-    {
-      name: "Model",
-      key: `${cmd}+m`,
-      onPress: async () => {
-        await new SwitchModel().run()
-        refreshHandle.value?.()
-      },
-      ...visibilityProps,
-    },
-  )
+    bar: "right",
+    visible: true,
+  })
 
   res.push({
-    name: showOptions.value ? "Hide Options" : "Show Options",
+    name: "Options",
     key: `${cmd}+o`,
-    onPress: () => {
-      showOptions.value = !showOptions.value
+    onPress: async () => {
+      await new Options().run()
+      refreshHandle.value?.()
     },
     bar: "right",
     visible: true,
@@ -251,13 +225,11 @@ function closeActionsPanel() {
 
 const selectedSuggestion = signal<{ text: string } | undefined>(undefined)
 
-const ZERO_WIDTH_SPACE = " " // Make items appear at the top
-
 const actions = computed(() => {
   if (selectedSuggestion.value) {
     return [
       {
-        name: `${ZERO_WIDTH_SPACE + ZERO_WIDTH_SPACE}📤 Send`,
+        name: "📤 Send",
         onAction() {
           batch(() => {
             messages.push({ role: "user", content: selectedSuggestion.value!.text })
@@ -268,7 +240,7 @@ const actions = computed(() => {
         visible: true,
       },
       {
-        name: `${ZERO_WIDTH_SPACE}📝 Use as template`,
+        name: "📝 Use as template",
         onAction() {
           batch(() => {
             setInput(selectedSuggestion.value!.text)
@@ -290,37 +262,29 @@ const actions = computed(() => {
     ]
   }
 
-  const result: Action[] = []
-
-  const sugg = currentSuggestions.value
-
-  if (!sugg) {
-    return result
+  const suggestions = currentSuggestions.value
+  if (!suggestions) {
+    return []
   }
 
-  const suggestionsMerged = [
-    { prefix: ZERO_WIDTH_SPACE, text: `${sugg.moreExamplesQuestion}`, emoji: "➕" },
-    ...sugg.followupQuestions.map((x) => ({
-      group: "Suggestions",
-      prefix: "",
-      text: x.question,
-      emoji: x.emoji,
-    })),
-  ] as const
-
-  result.push(
-    ...suggestionsMerged.flatMap((x) => [
-      {
-        name: `${x.prefix}${x.emoji} ${x.text}`,
-        onAction: () => {
-          selectedSuggestion.value = { text: x.text }
-        },
-        visible: true,
+  return (
+    [
+      { text: `${suggestions.moreExamplesQuestion}`, emoji: "➕" },
+      ...suggestions.followupQuestions.map((x) => ({
+        group: "Suggestions",
+        text: x.question,
+        emoji: x.emoji,
+      })),
+    ] as const
+  ).flatMap((x) => [
+    {
+      name: `${x.emoji} ${x.text}`,
+      onAction: () => {
+        selectedSuggestion.value = { text: x.text }
       },
-    ]),
-  )
-
-  return result
+      visible: true,
+    },
+  ])
 })
 
 effect(() => {

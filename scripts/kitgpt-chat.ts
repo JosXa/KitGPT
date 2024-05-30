@@ -8,13 +8,10 @@
 import "@johnlindquist/kit"
 // Cache: false (custom metadata)
 
-import Chat from "../src/screens/Chat"
-
-import { ensureDbInitialized } from "../src/database/db"
-
-import Welcome from "../src/screens/Welcome"
-
-import { welcomeShown } from "../src/store/settings"
+import { ensureDbInitialized } from "../lib/database/db"
+import Chat from "../lib/screens/Chat"
+import Welcome from "../lib/screens/Welcome"
+import { welcomeShown } from "../lib/store/settings"
 
 await ensureDbInitialized(({ backupPath }) =>
   div(
