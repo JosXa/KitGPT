@@ -4,8 +4,8 @@ import { signal } from "@preact/signals-core"
 import { type Provider, getProviderOrThrow } from "../ai/models"
 import { PROMPT_WIDTH } from "../settings"
 import { currentModel } from "../store/settings"
-import ConfigureSystemPrompt from "./ConfigureSystemPrompt"
-import SwitchModel from "./SwitchModel"
+import ConfigureSystemPromptScreen from "./ConfigureSystemPromptScreen"
+import SwitchModelScreen from "./SwitchModelScreen"
 import { KitGptScreen } from "./base/KitGptScreen"
 
 const focuseChoiceId = signal<string | undefined>(undefined)
@@ -36,7 +36,7 @@ const buildChoices = (refresh: () => void) => {
       name: "Edit System Prompt",
       shortcut: `${cmd}+p`,
       onSubmit: async () => {
-        await new ConfigureSystemPrompt().run()
+        await new ConfigureSystemPromptScreen().run()
         refresh()
         return preventSubmit
       },
@@ -46,7 +46,7 @@ const buildChoices = (refresh: () => void) => {
       name: "Switch Provider / Model",
       shortcut: `${cmd}+m`,
       onSubmit: async () => {
-        await new SwitchModel().run()
+        await new SwitchModelScreen().run()
         refresh()
         return preventSubmit
       },
@@ -56,7 +56,7 @@ const buildChoices = (refresh: () => void) => {
   return res
 }
 
-export default class Options extends KitGptScreen<void> {
+export default class OptionsScreen extends KitGptScreen<void> {
   name = "options"
 
   async render({ refresh, resolve }: RefreshableControls<void>) {

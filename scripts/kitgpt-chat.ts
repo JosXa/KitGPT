@@ -9,8 +9,8 @@ import "@johnlindquist/kit"
 // Cache: false (custom metadata)
 
 import { ensureDbInitialized } from "../lib/database/db"
-import Chat from "../lib/screens/Chat"
-import Welcome from "../lib/screens/Welcome"
+import ChatScreen from "../lib/screens/ChatScreen"
+import WelcomeScreen from "../lib/screens/WelcomeScreen"
 import { welcomeShown } from "../lib/store/settings"
 
 await ensureDbInitialized(({ backupPath }) =>
@@ -24,9 +24,9 @@ await ensureDbInitialized(({ backupPath }) =>
 )
 
 if (!welcomeShown.value) {
-  await new Welcome().run()
+  await new WelcomeScreen().run()
 }
 
 const passedValue = flag.pass as string | undefined
 
-await new Chat(passedValue).run()
+await new ChatScreen(passedValue).run()

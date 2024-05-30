@@ -3,7 +3,7 @@ import { PROMPT_WIDTH } from "../settings"
 import { currentModel, welcomeShown } from "../store/settings"
 import { KitGptScreen } from "./base/KitGptScreen"
 
-export default class Welcome extends KitGptScreen<void> {
+export default class WelcomeScreen extends KitGptScreen<void> {
   name = "Welcome"
 
   async render() {

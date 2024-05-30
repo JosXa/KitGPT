@@ -38,7 +38,7 @@ const getFullConvoCached = async (conversationId: number) => {
   return val
 }
 
-export default class ConversationHistory extends KitGptScreen<void> {
+export default class ConversationHistoryScreen extends KitGptScreen<void> {
   name = "conversation-history"
   cache = new Map()
 

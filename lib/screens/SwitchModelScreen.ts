@@ -5,7 +5,7 @@ import { currentModel } from "../store/settings"
 import { typedObjectEntries } from "../utils/typed-objects"
 import { KitGptScreen } from "./base/KitGptScreen"
 
-export default class SwitchModel extends KitGptScreen<void> {
+export default class SwitchModelScreen extends KitGptScreen<void> {
   name = "switch-model"
 
   async render({ refresh, resolve }: RefreshableControls<void>) {

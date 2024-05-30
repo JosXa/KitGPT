@@ -15,9 +15,9 @@ import { currentSuggestions, messages, subscribeToMessageEdits } from "../store/
 import { currentConversationTitle, resetConversation } from "../store/conversations"
 import { currentModel, systemPrompt } from "../store/settings"
 import { titleCase } from "../utils/string-utils"
-import ConversationHistory from "./ConversationHistory"
-import Options from "./Options"
-import SwitchModel from "./SwitchModel"
+import ConversationHistoryScreen from "./ConversationHistoryScreen"
+import OptionsScreen from "./OptionsScreen"
+import SwitchModelScreen from "./SwitchModelScreen"
 import { KitGptScreen } from "./base/KitGptScreen"
 
 enum Status {
@@ -181,7 +181,7 @@ const shortcuts = computed(() => {
     name: "History",
     key: `${cmd}+h`,
     onPress: async () => {
-      await new ConversationHistory().run()
+      await new ConversationHistoryScreen().run()
       refreshHandle.value?.()
     },
     bar: "left",
@@ -196,7 +196,7 @@ const shortcuts = computed(() => {
     name: "Model",
     key: `${cmd}+m`,
     onPress: async () => {
-      await new SwitchModel().run()
+      await new SwitchModelScreen().run()
       refreshHandle.value?.()
     },
     bar: "right",
@@ -207,7 +207,7 @@ const shortcuts = computed(() => {
     name: "Options",
     key: `${cmd}+o`,
     onPress: async () => {
-      await new Options().run()
+      await new OptionsScreen().run()
       refreshHandle.value?.()
     },
     bar: "right",
@@ -318,14 +318,15 @@ const footer = computed(() => {
 
 type Message = Awaited<ReturnType<typeof chat>>[number]
 
-export default class Chat extends KitGptScreen<Message[] | undefined> {
+export default class ChatScreen extends KitGptScreen<Message[] | undefined> {
   name = "chat"
 
   constructor(private passedValue?: string) {
+    // TODO: Do something with the passed value
     super()
   }
 
-  async render({ refresh, refreshCount, signal }: RefreshableControls<Message[] | undefined>) {
+  async render({ refresh, refreshCount, signal }) {
     refreshHandle.value = refresh
 
     try {
@@ -362,7 +363,7 @@ export default class Chat extends KitGptScreen<Message[] | undefined> {
           })
 
           if (!currentModel.value) {
-            await new SwitchModel().run()
+            await new SwitchModelScreen().run()
             refresh()
             return
           }

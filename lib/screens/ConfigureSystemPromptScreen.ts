@@ -2,7 +2,7 @@ import { PROMPT_WIDTH } from "../settings"
 import { systemPrompt } from "../store/settings"
 import { KitGptScreen } from "./base/KitGptScreen"
 
-export default class ConfigureSystemPrompt extends KitGptScreen<string | undefined> {
+export default class ConfigureSystemPromptScreen extends KitGptScreen<string | undefined> {
   name = "configure-system-prompt"
 
   async render({ resolve }): Promise<string | undefined> {
