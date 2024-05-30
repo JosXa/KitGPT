@@ -6,6 +6,10 @@ export const currentModel = signal(
   settingsDb.provider && settingsDb.modelId ? await getModel(settingsDb.provider, settingsDb.modelId) : undefined,
 )
 
+// TODO: Add model settings (e.g. temperature, max tokens, etc.)
+// export type ModelSetings = {}
+// export const currentModelSettings = signal()
+
 export const systemPrompt = signal(settingsDb.systemPrompt)
 export const welcomeShown = signal(settingsDb.welcomeShown)
 

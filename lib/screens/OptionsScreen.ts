@@ -5,6 +5,7 @@ import { type Provider, getProviderOrThrow } from "../ai/models"
 import { PROMPT_WIDTH } from "../settings"
 import { currentModel } from "../store/settings"
 import ConfigureSystemPromptScreen from "./ConfigureSystemPromptScreen"
+import ModelSettingsScreen from "./ModelSettingsScreen"
 import SwitchModelScreen from "./SwitchModelScreen"
 import { KitGptScreen } from "./base/KitGptScreen"
 
@@ -12,23 +13,6 @@ const focuseChoiceId = signal<string | undefined>(undefined)
 
 const buildChoices = (refresh: () => void) => {
   const res: Choice[] = []
-
-  const platformStatisticsUrl = currentModel.value
-    ? getProviderOrThrow(currentModel.value.provider as Provider).platformStatisticsUrl
-    : undefined
-
-  if (platformStatisticsUrl) {
-    res.push({
-      id: "show-platform-usage",
-      name: "Show Platform Usage (opens in browser)",
-      shortcut: `${cmd}+u`,
-      onSubmit: () => {
-        // noinspection JSArrowFunctionBracesCanBeRemoved
-        open(platformStatisticsUrl)
-        return preventSubmit
-      },
-    })
-  }
 
   res.push(
     {
@@ -51,7 +35,34 @@ const buildChoices = (refresh: () => void) => {
         return preventSubmit
       },
     },
+    {
+      id: "model-settings",
+      name: "Model Settings",
+      shortcut: `${cmd}+p`,
+      onSubmit: async () => {
+        await new ModelSettingsScreen().run()
+        refresh()
+        return preventSubmit
+      },
+    },
   )
+
+  const platformStatisticsUrl = currentModel.value
+    ? getProviderOrThrow(currentModel.value.provider as Provider).platformStatisticsUrl
+    : undefined
+
+  if (platformStatisticsUrl) {
+    res.push({
+      id: "show-platform-usage",
+      name: "Show Platform Usage (opens in browser)",
+      shortcut: `${cmd}+u`,
+      onSubmit: () => {
+        // noinspection JSArrowFunctionBracesCanBeRemoved
+        open(platformStatisticsUrl)
+        return preventSubmit
+      },
+    })
+  }
 
   return res
 }
