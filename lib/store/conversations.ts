@@ -1,6 +1,7 @@
 import { batch, effect, signal } from "@preact/signals-core"
 import { debouncedUpdateConversation, insertConversation } from "../database/conversations"
-import { currentSuggestions, messages } from "./chat"
+import { currentSuggestions } from "./chat"
+import { messages } from "./messages"
 
 export const currentConversationId = signal<number | undefined>(undefined)
 export const currentConversationTitle = signal<string | undefined>(undefined)

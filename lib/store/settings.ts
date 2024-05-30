@@ -1,10 +1,11 @@
-import { effect, signal } from "@preact/signals-core"
-import { type Provider, getModel } from "../ai/models"
-import { debouncedWriteSettings, settingsDb } from "../database/settings-db"
+import { computed, signal } from "@preact/signals-core"
+import type { getModel } from "../ai/models"
+import type { KitGptTool } from "../ai/tool-calling"
+import { settingsDb } from "../database/settings-db"
+import { mapObjectEntries } from "../utils/typed-objects"
+import { chatControls } from "./messages"
 
-export const currentModel = signal(
-  settingsDb.provider && settingsDb.modelId ? await getModel(settingsDb.provider, settingsDb.modelId) : undefined,
-)
+export const currentModel = signal<undefined | Awaited<ReturnType<typeof getModel>>>(undefined)
 
 // TODO: Add model settings (e.g. temperature, max tokens, etc.)
 // export type ModelSetings = {}
@@ -13,11 +14,14 @@ export const currentModel = signal(
 export const systemPrompt = signal(settingsDb.systemPrompt)
 export const welcomeShown = signal(settingsDb.welcomeShown)
 
-effect(() => {
-  settingsDb.systemPrompt = systemPrompt.value
-  settingsDb.welcomeShown = welcomeShown.value
-  settingsDb.modelId = currentModel.value?.modelId
-  settingsDb.provider = currentModel.value?.provider as Provider
+export const userDefinedTools = signal<Record<string, KitGptTool>>({})
 
-  debouncedWriteSettings()
-})
+export const aiTools = computed(() =>
+  mapObjectEntries(userDefinedTools.value, ([name, tool]) => [
+    name,
+    {
+      ...tool,
+      execute: async (args: any) => await tool.execute(chatControls, args),
+    },
+  ]),
+)

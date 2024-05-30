@@ -134,6 +134,7 @@ export const getProviderOrThrow = (provider: Provider) => {
 }
 
 export async function getModel(provider: Provider, modelId: string) {
+  debugger
   const p = getProviderOrThrow(provider)
   return await p.getModel(modelId)
 }

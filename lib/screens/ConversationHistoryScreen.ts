@@ -9,8 +9,8 @@ import {
 } from "../database/conversations"
 import type { Conversation } from "../database/schema"
 import { PROMPT_WIDTH } from "../settings"
-import { messages } from "../store/chat"
 import { currentConversationId, currentConversationTitle, resetConversation } from "../store/conversations"
+import { messages } from "../store/messages"
 import { titleCase } from "../utils/string-utils"
 import { KitGptScreen } from "./base/KitGptScreen"
 

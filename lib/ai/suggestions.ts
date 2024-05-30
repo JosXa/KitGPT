@@ -1,7 +1,8 @@
 import { generateObject } from "ai"
 import { z } from "zod"
 import { NUM_SUGGESTIONS } from "../settings"
-import { currentSuggestions, messages } from "../store/chat"
+import { currentSuggestions } from "../store/chat"
+import { messages } from "../store/messages"
 import { currentModel } from "../store/settings"
 
 const followupQuestionsSchema = z.object({

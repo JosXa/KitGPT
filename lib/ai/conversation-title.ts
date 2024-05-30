@@ -1,7 +1,7 @@
 import { generateObject } from "ai"
 import { z } from "zod"
-import { messages } from "../store/chat"
 import { currentConversationTitle } from "../store/conversations"
+import { messages } from "../store/messages"
 import { currentModel } from "../store/settings"
 import { truncate } from "../utils/string-utils"
 

@@ -1,19 +1,21 @@
 import "@johnlindquist/kit"
 
 import type { Shortcut } from "@johnlindquist/kit"
-import { type RefreshableControls, showError } from "@josxa/kit-utils"
+import { showError } from "@josxa/kit-utils"
 import { batch, computed, effect, signal, untracked } from "@preact/signals-core"
 
-import { type CoreMessage, streamText } from "ai"
+import type { CoreMessage } from "ai"
 import { deepSignal } from "deepsignal/core"
 import { generateNewTitleForConversation } from "../ai/conversation-title"
+import { streamTextWithSelectedModel } from "../ai/generate"
 import { type Provider, getProviderOrThrow } from "../ai/models"
 import { getSuggestions } from "../ai/suggestions"
 import { CHAT_WINDOW_HEIGHT, PREVIEW_WIDTH_PERCENT, PROMPT_WIDTH } from "../settings"
 import { activeScreen } from "../store"
-import { currentSuggestions, messages, subscribeToMessageEdits } from "../store/chat"
+import { currentSuggestions } from "../store/chat"
 import { currentConversationTitle, resetConversation } from "../store/conversations"
-import { currentModel, systemPrompt } from "../store/settings"
+import { messages, subscribeToMessageEdits } from "../store/messages"
+import { aiTools, currentModel } from "../store/settings"
 import { titleCase } from "../utils/string-utils"
 import ConversationHistoryScreen from "./ConversationHistoryScreen"
 import OptionsScreen from "./OptionsScreen"
@@ -24,10 +26,12 @@ enum Status {
   Ready = "Ready",
   GettingSuggestions = "Getting suggestions...",
   Responding = "Responding...",
+  CallingTool = "Calling custom tool...",
 }
 
 const refreshHandle = signal<(() => any) | undefined>(undefined)
 const currentStatus = signal(Status.Ready)
+const customToolCalled = signal<string | undefined>(undefined)
 
 const currentResponseStream = signal<AbortController | null>(null)
 const abortResponseStream = () => {
@@ -46,25 +50,36 @@ async function streamResponse() {
   currentResponseStream.value = new AbortController()
 
   try {
-    const result = await streamText({
-      model: currentModel.value!,
-      system: systemPrompt.value,
+    const result = await streamTextWithSelectedModel({
       messages: messages,
-
+      tools: aiTools.value,
       abortSignal: currentResponseStream.value.signal,
     })
 
     // Insert new message into the deep signal and get out a reactive version
-    const generatingMessage =
-      messages[
-        messages.push({
-          role: "assistant",
-          content: "",
-        }) - 1
-      ]!
+    let generatingMessage: CoreMessage | undefined = undefined
 
-    for await (const delta of result.textStream) {
-      generatingMessage.content += delta
+    for await (const chunk of result.fullStream) {
+      if (chunk.type === "text-delta") {
+        if (chunk.textDelta.length > 0) {
+          if (!generatingMessage) {
+            generatingMessage =
+              messages[
+                messages.push({
+                  role: "assistant",
+                  content: "",
+                }) - 1
+              ]!
+          }
+          generatingMessage!.content += chunk.textDelta
+        }
+      } else if (chunk.type === "error") {
+        // noinspection ExceptionCaughtLocallyJS
+        throw chunk.error
+      } else if (chunk.type === "tool-call") {
+        currentStatus.value = Status.CallingTool
+        customToolCalled.value = chunk.toolName
+      }
     }
 
     currentResponseStream.value = null
@@ -74,6 +89,8 @@ async function streamResponse() {
     }
     await showError(err, `An error occurred while generating a response from ${currentModel.value?.provider}`)
     refreshHandle.value?.()
+  } finally {
+    customToolCalled.value = undefined
   }
 }
 
@@ -310,6 +327,9 @@ const footer = computed(() => {
   switch (currentStatus.value) {
     case Status.Responding: {
       return `${currentProviderName.value ?? "AI"} is responding...`
+    }
+    case Status.CallingTool: {
+      return `Calling ${customToolCalled.value ?? "custom tool"}...`
     }
     default:
       return currentStatus.value

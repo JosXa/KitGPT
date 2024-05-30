@@ -16,3 +16,5 @@ export const debouncedWriteSettings = debounce(settingsDb.write, 1000, {
   leading: false,
   trailing: true,
 })
+
+export function initialize() {}
