@@ -39,7 +39,7 @@ await kitGpt({
         .describe("Whether this should be a TypeScript ('.ts') or JavaScript ('.js') file"),
     }),
     execute: async (chat, { name, requirements, fileExtension }) => {
-      chat.appendLine(requirements)
+      chat.send(md(`## Task\n${requirements}`))
       setProgress(20)
 
       const script = await generateKitScript({ name, requirements, typeScript: fileExtension === ".ts" })
