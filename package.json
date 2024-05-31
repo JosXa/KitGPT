@@ -2,10 +2,9 @@
   "type": "module",
   "scripts": {
     "db:migrate": "drizzle-kit generate",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "npx --yes drizzle-kit studio"
   },
   "dependencies": {
-    "drizzle-orm": ">=0.30.10",
-    "drizzle-kit": ">=0.21.4"
+    "drizzle-orm": ">=0.30.10"
   }
 }

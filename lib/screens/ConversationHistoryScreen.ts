@@ -45,6 +45,11 @@ export default class ConversationHistoryScreen extends KitGptScreen<void> {
   async render({ refresh, resolve }) {
     const metadata = await getAllConversationMetadata()
 
+    if (metadata.length === 0) {
+      await div(md("# No conversations found\n\nIt looks empty here."))
+      resolve()
+    }
+
     const selectedConvoId = await arg<number>({
       placeholder: "Conversation History",
       width: PROMPT_WIDTH,

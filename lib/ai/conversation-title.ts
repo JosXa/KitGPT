@@ -13,7 +13,7 @@ export async function generateNewTitleForConversation() {
   const context = [...messages]
   context.push({
     role: "system",
-    content: "Please provide a short, descriptive name for this entire conversation",
+    content: "Please provide a short, descriptive name for this entire conversation. Less than 60 characters is ideal.",
   })
 
   try {
@@ -23,7 +23,7 @@ export async function generateNewTitleForConversation() {
       messages: context,
     })
 
-    currentConversationTitle.value = truncate(object.conversationTitle, 50)
+    currentConversationTitle.value = truncate(object.conversationTitle, 70)
   } catch (err) {
     warn(new Error("Unable to generate title for conversation", { cause: err }))
   }

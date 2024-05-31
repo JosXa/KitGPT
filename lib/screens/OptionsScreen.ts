@@ -1,5 +1,7 @@
+import { dirname } from "node:path"
+import { fileURLToPath } from "node:url"
 import type { Choice } from "@johnlindquist/kit/types"
-import type { RefreshableControls } from "@josxa/kit-utils"
+import { type RefreshableControls, showError } from "@josxa/kit-utils"
 import { signal } from "@preact/signals-core"
 import { type Provider, getProviderOrThrow } from "../ai/models"
 import { PROMPT_WIDTH } from "../settings"
@@ -9,7 +11,14 @@ import ModelSettingsScreen from "./ModelSettingsScreen"
 import SwitchModelScreen from "./SwitchModelScreen"
 import { KitGptScreen } from "./base/KitGptScreen"
 
+const __dirname = dirname(fileURLToPath(import.meta.url))
+
 const focuseChoiceId = signal<string | undefined>(undefined)
+
+const openDrizzleStudio = async (signal: AbortSignal) => {
+  const projectRoot = path.join(__dirname, "..")
+  await term({ command: "npm run db:studio", cwd: projectRoot })
+}
 
 const buildChoices = (refresh: () => void) => {
   const res: Choice[] = []
@@ -41,6 +50,20 @@ const buildChoices = (refresh: () => void) => {
       shortcut: `${cmd}+p`,
       onSubmit: async () => {
         await new ModelSettingsScreen().run()
+        refresh()
+        return preventSubmit
+      },
+    },
+    {
+      id: "conversations-db",
+      name: "Show Conversations Database",
+      onSubmit: async () => {
+        try {
+          await openDrizzleStudio()
+        } catch (err) {
+          await showError(err, "Unable to start Drizzle Studio")
+        }
+
         refresh()
         return preventSubmit
       },
