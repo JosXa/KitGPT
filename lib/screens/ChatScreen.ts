@@ -1,9 +1,12 @@
+// noinspection ExceptionCaughtLocallyJS
+
 import "@johnlindquist/kit"
 
 import type { Shortcut } from "@johnlindquist/kit"
 import { showError } from "@josxa/kit-utils"
 import { batch, computed, effect, signal, untracked } from "@preact/signals-core"
 
+import { writeFile } from "node:fs/promises"
 import type { CoreMessage } from "ai"
 import { deepSignal } from "deepsignal/core"
 import { generateNewTitleForConversation } from "../ai/conversation-title"
@@ -15,6 +18,7 @@ import { activeScreen } from "../store"
 import { currentSuggestions } from "../store/chat"
 import { currentConversationTitle, resetConversation } from "../store/conversations"
 import { messages, subscribeToMessageEdits } from "../store/messages"
+import { lastGeneratedScriptContent } from "../store/script-generator"
 import { aiTools, currentModel, userDefinedTools } from "../store/settings"
 import SubmitLinkEncoder from "../utils/SubmitLinkEncoder"
 import { titleCase } from "../utils/string-utils"
@@ -24,8 +28,9 @@ import SwitchModelScreen from "./SwitchModelScreen"
 import { KitGptScreen } from "./base/KitGptScreen"
 
 export enum TOOL_RESULT_ACTION {
-  OpenInEditor = "open-in-editor",
-  RunScript = "run-script",
+  SaveGeneratedScript = "save-generated-script",
+  OpenGeneratedScriptInEditor = "open-in-editor",
+  RunGeneratedScript = "run-script",
 }
 
 enum Status {
@@ -417,30 +422,53 @@ div.kit-mbox > ul, ol {
         },
         onSubmit(content) {
           content && messages.push({ role: "user", content })
-          refresh()
         },
       })) as Message[] | TOOL_RESULT_ACTION
 
       if (typeof result === "string" && SubmitLinkEncoder.canDecode(result)) {
         const decoder = SubmitLinkEncoder.decode(result)
 
-        switch (decoder.action) {
-          case TOOL_RESULT_ACTION.OpenInEditor: {
-            const file = decoder.params.get("file")
-            if (!file) {
-              await showError("File parameter not present in submit link")
-              return refresh()
-            }
-            edit(file).then()
-            return refresh()
+        const writeLastGeneratedScript = async (filePath: string) => {
+          if (!lastGeneratedScriptContent.value) {
+            throw Error("No script contents found!")
           }
-          case TOOL_RESULT_ACTION.RunScript: {
-            await run(decoder.params.get("scriptName"))
-            return
-          }
+          await writeFile(filePath, lastGeneratedScriptContent.value, "utf-8")
         }
 
-        return refresh()
+        switch (decoder.action) {
+          case TOOL_RESULT_ACTION.SaveGeneratedScript: {
+            const filePath = decoder.params.file!
+            try {
+              await writeLastGeneratedScript(filePath)
+            } catch (err) {
+              await showError(err)
+            }
+            return refresh()
+          }
+          case TOOL_RESULT_ACTION.OpenGeneratedScriptInEditor: {
+            try {
+              const filePath = decoder.params.file!
+              await writeLastGeneratedScript(filePath)
+              await edit(filePath)
+            } catch (err) {
+              await showError(err)
+            }
+
+            return refresh()
+          }
+          case TOOL_RESULT_ACTION.RunGeneratedScript: {
+            try {
+              const filePath = decoder.params.file!
+              await writeLastGeneratedScript(filePath)
+              await run(decoder.params.scriptName!)
+            } catch (err) {
+              await showError(err)
+              return refresh()
+            }
+
+            exit() // Can't refresh after running a script anyway
+          }
+        }
       }
 
       return result

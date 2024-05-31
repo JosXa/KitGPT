@@ -11,6 +11,7 @@ import { writeFile } from "node:fs/promises"
 import { z } from "zod"
 import { generateKitScript, kitGpt, kitGptTool } from ".."
 import { TOOL_RESULT_ACTION } from "../lib/screens/ChatScreen"
+import { lastGeneratedScriptContent } from "../lib/store/script-generator"
 import SubmitLinkEncoder from "../lib/utils/SubmitLinkEncoder"
 
 await kitGpt({
@@ -47,20 +48,26 @@ await kitGpt({
       const fileName = `${scriptName}${fileExtension}`
       const filePath = kenvPath("scripts", fileName)
 
-      await writeFile(filePath, script, "utf8")
-
       setProgress(-1)
-      chat.appendLine(`I generated the <b>${name}</b> script at <code>scripts/${fileName}</code> for you:`)
+      chat.appendLine(`Here is the <b>${name}</b> script you requested.`)
       chat.send(md(`~~~${fileExtension.replace(".", "")}\n${script.replaceAll("~~~", "")}\n~~~`))
 
-      const openInEditor = new SubmitLinkEncoder(TOOL_RESULT_ACTION.OpenInEditor)
-      openInEditor.setParam("file", filePath)
+      const save = new SubmitLinkEncoder(TOOL_RESULT_ACTION.SaveGeneratedScript, { file: filePath })
 
-      const runScript = new SubmitLinkEncoder(TOOL_RESULT_ACTION.RunScript)
-      runScript.setParam("scriptName", scriptName)
+      const openInEditor = new SubmitLinkEncoder(TOOL_RESULT_ACTION.OpenGeneratedScriptInEditor, { file: filePath })
+
+      const runScript = new SubmitLinkEncoder(TOOL_RESULT_ACTION.RunGeneratedScript, { file: filePath, scriptName })
+
+      chat.appendLine(md(`**After your review**, I can add it to your kenv as <code>${filePath}<code>.`))
 
       chat.appendLine(
-        md(`${openInEditor.toMarkdownLink("Open in Editor")} | ${runScript.toMarkdownLink("Run Script")}`),
+        md(
+          [
+            save.toMarkdownLink("Save"),
+            openInEditor.toMarkdownLink("Save and open in editor"),
+            runScript.toMarkdownLink("Save and run"),
+          ].join(" | "),
+        ),
       )
     },
   }),

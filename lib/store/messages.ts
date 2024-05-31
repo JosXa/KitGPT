@@ -36,7 +36,7 @@ export const chatControls: ChatControls = {
   appendLine: (text) => {
     const lastMessageInChat = messages[messages.length - 1]
     if (lastMessageInChat && lastMessageInChat.role === "assistant") {
-      lastMessageInChat.content += "\n\n" + text
+      lastMessageInChat.content += "\n" + text
     } else {
       messages.push({ role: "assistant", content: text })
     }

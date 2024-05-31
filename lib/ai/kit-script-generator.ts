@@ -3,6 +3,7 @@ import { generateTextWithSelectedModel } from "./generate"
 
 import { dirname } from "node:path"
 import { fileURLToPath } from "node:url"
+import { lastGeneratedScriptContent } from "../store/script-generator"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -33,6 +34,7 @@ Please follow these instructions:
 - console.log statements are discouraged
 - Use \`node:\` import prefixes where applicable (e.g. node:fs/promises, node:path, ...)
 - Axios is builtin. If you need to make an http call, just do \`await get(...)\` or \`await post(...)\`
+- Add verbose comments to the script to help the user fully understand what every step is doing
 `
 
 export async function generateKitScript({
@@ -46,8 +48,12 @@ export async function generateKitScript({
 
   const system = await buildSystemPrompt()
 
-  const result = await generateTextWithSelectedModel({ system, prompt })
-  return extractCodeInFences(result.text)
+  const generatedText = await generateTextWithSelectedModel({ system, prompt })
+  const code = extractCodeInFences(generatedText.text)
+
+  lastGeneratedScriptContent.value = code
+
+  return code
 }
 
 function extractCodeInFences(text: string) {
