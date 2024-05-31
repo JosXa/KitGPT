@@ -431,12 +431,12 @@ div.kit-mbox > ul, ol {
               await showError("File parameter not present in submit link")
               return refresh()
             }
-            await edit(file)
-            break
+            edit(file).then()
+            return refresh()
           }
           case TOOL_RESULT_ACTION.RunScript: {
             await run(decoder.params.get("scriptName"))
-            break
+            return
           }
         }
 
