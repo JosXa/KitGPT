@@ -68,7 +68,7 @@ export const PROVIDERS = {
         ...props,
       })
     },
-    platformStatisticsUrl: undefined,
+    platformStatisticsUrl: "https://aistudio.google.com/app/plan_information",
   },
   "google-vertex": {
     name: "Google Vertex",

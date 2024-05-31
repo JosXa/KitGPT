@@ -15,12 +15,18 @@ import { activeScreen } from "../store"
 import { currentSuggestions } from "../store/chat"
 import { currentConversationTitle, resetConversation } from "../store/conversations"
 import { messages, subscribeToMessageEdits } from "../store/messages"
-import { aiTools, currentModel } from "../store/settings"
+import { aiTools, currentModel, userDefinedTools } from "../store/settings"
+import SubmitLinkEncoder from "../utils/SubmitLinkEncoder"
 import { titleCase } from "../utils/string-utils"
 import ConversationHistoryScreen from "./ConversationHistoryScreen"
 import OptionsScreen from "./OptionsScreen"
 import SwitchModelScreen from "./SwitchModelScreen"
 import { KitGptScreen } from "./base/KitGptScreen"
+
+export enum TOOL_RESULT_ACTION {
+  OpenInEditor = "open-in-editor",
+  RunScript = "run-script",
+}
 
 enum Status {
   Ready = "Ready",
@@ -42,6 +48,7 @@ const abortResponseStream = () => {
 effect(function abortWhenConversationResets() {
   if (messages.length === 0) {
     abortResponseStream()
+    currentStatus.value = Status.Ready
   }
 })
 
@@ -78,7 +85,7 @@ async function streamResponse() {
         throw chunk.error
       } else if (chunk.type === "tool-call") {
         currentStatus.value = Status.CallingTool
-        customToolCalled.value = chunk.toolName
+        customToolCalled.value = userDefinedTools.value[chunk.toolName]?.displayText ?? chunk.toolName
       }
     }
 
@@ -141,10 +148,10 @@ messages.$length!.subscribe(function onNewMessages(newLength: number) {
 })
 
 effect(function streamResponseOnUserMessage() {
-  if (messages.length > 0 && messages[messages.length - 1]?.role === "user" && currentResponseStream.value === null) {
+  if (messages.length > 0 && messages[messages.length - 1]?.role === "user") {
     untracked(() => {
       currentStatus.value = Status.Responding
-      return streamResponse()
+      streamResponse()
     })
   }
 })
@@ -185,7 +192,6 @@ const shortcuts = computed(() => {
     res.push({
       name: "New Conversation",
       key: `${cmd}+n`,
-
       onPress: () => {
         resetConversation()
         refreshHandle.value?.()
@@ -329,7 +335,7 @@ const footer = computed(() => {
       return `${currentProviderName.value ?? "AI"} is responding...`
     }
     case Status.CallingTool: {
-      return `Calling ${customToolCalled.value ?? "custom tool"}...`
+      return `${customToolCalled.value ?? "Calling custom tool"}...`
     }
     default:
       return currentStatus.value
@@ -342,16 +348,16 @@ export default class ChatScreen extends KitGptScreen<Message[] | undefined> {
   name = "chat"
 
   constructor(private passedValue?: string) {
-    // TODO: Do something with the passed value
     super()
   }
 
   async render({ refresh, refreshCount, signal }) {
+    const passedValue = this.passedValue
     refreshHandle.value = refresh
 
     try {
       // noinspection JSArrowFunctionBracesCanBeRemoved
-      return await chat({
+      const result = (await chat({
         async onInit() {
           const effectHandles = [
             effect(() => setShortcuts(shortcuts.value)),
@@ -385,12 +391,11 @@ export default class ChatScreen extends KitGptScreen<Message[] | undefined> {
           if (!currentModel.value) {
             await new SwitchModelScreen().run()
             refresh()
-            return
           }
         },
         width: PROMPT_WIDTH,
         height: CHAT_WINDOW_HEIGHT,
-        input: refreshCount === 0 ? this.passedValue : undefined,
+        input: refreshCount === 0 ? passedValue : undefined,
         shortcuts: shortcuts.value,
         placeholder: `✨ Ask ${currentProviderName.value ?? "AI"} anything...`,
         actions: actions.value,
@@ -414,10 +419,38 @@ div.kit-mbox > ul, ol {
           content && messages.push({ role: "user", content })
           refresh()
         },
-      })
+      })) as Message[] | TOOL_RESULT_ACTION
+
+      if (typeof result === "string" && SubmitLinkEncoder.canDecode(result)) {
+        const decoder = SubmitLinkEncoder.decode(result)
+
+        switch (decoder.action) {
+          case TOOL_RESULT_ACTION.OpenInEditor: {
+            const file = decoder.params.get("file")
+            if (!file) {
+              await showError("File parameter not present in submit link")
+              return refresh()
+            }
+            await edit(file)
+            break
+          }
+          case TOOL_RESULT_ACTION.RunScript: {
+            await run(decoder.params.get("scriptName"))
+            break
+          }
+        }
+
+        return refresh()
+      }
+
+      return result
     } catch (err) {
       await showError(err)
-      refresh()
+      return refresh()
     }
   }
+}
+
+function isToolResultAction(result: Message[] | TOOL_RESULT_ACTION): result is TOOL_RESULT_ACTION {
+  return typeof result === "string" && Object.values(TOOL_RESULT_ACTION).some((x) => result.startsWith(x))
 }

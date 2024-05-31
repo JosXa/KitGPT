@@ -3,7 +3,7 @@
 ```js
 // Menu: Search Anime
 // Description: Use the jikan.moe API to search anime
-// Author: John Lindquist
+
 let anime = await arg("Anime:")
 
 let response = await get(
@@ -22,7 +22,7 @@ showImage(image_url, { title })
 ```js
 // Menu: App Launcher
 // Description: Search for an app then launch it
-// Author: John Lindquist
+
 let createChoices = async () => {
   let apps = await fileSearch("", {
     onlyin: "/",
@@ -78,7 +78,7 @@ exec(command)
 ```js
 // Menu: Book Search
 // Description: Use Open Library API to search for books
-// Author: John Lindquist
+
 let query = await arg('Search for a book title:')
 
 //This API can be a little slow. Wait a couple seconds
@@ -99,7 +99,7 @@ inspect(markdown, 'md')
 ```js
 // Menu: Center App
 // Description: Center the frontmost app
-// Author: John Lindquist
+
 let { workArea, bounds } = await getActiveScreen()
 
 let { width, height } = workArea
@@ -121,43 +121,12 @@ setActiveAppBounds({
 ```
 
 
-### Chrome Bookmarks
-
-```js
-// Menu: Chrome Bookmarks
-// Description: Select and open a bookmark from Chrome
-// Author: John Lindquist
-let bookmarks = await readFile(
-  home(
-    "Library/Application Support/Google/Chrome/Default/Bookmarks"
-  )
-)
-
-bookmarks = JSON.parse(bookmarks)
-bookmarks = bookmarks.roots.bookmark_bar.children
-
-let url = await arg(
-  "Select bookmark",
-  bookmarks.map(({ name, url }) => {
-    return {
-      name,
-      description: url,
-      value: url,
-    }
-  })
-)
-
-exec(`open "${url}"`)
-
-```
-
-
 ### Open Chrome Tab
 
 ```js
 // Menu: Open Chrome Tab
 // Description: List all Chrome tabs. Then switch to that tab
-// Author: John Lindquist
+
 let currentTabs = await getTabs()
 
 let bookmarks = await readFile(
@@ -203,7 +172,7 @@ focusTab(url)
 ```js
 // Menu: Chrome Tab Switcher
 // Description: List all Chrome tabs. Then switch to that tab
-// Author: John Lindquist
+
 let tabs = await getTabs()
 
 let url = await arg(
@@ -220,23 +189,12 @@ focusTab(url)
 ```
 
 
-### chrome-tab
-
-```js
-// Description: Launch a url in Chrome. If url is already open, switch to that tab.
-// Author: John Lindquist
-let url = await arg("Enter url:")
-focusTab(url)
-
-```
-
-
 ### Convert Colors
 
 ```js
 // Menu: Convert Colors
 // Description: Converts colors between rgb, hex, etc
-// Author: John Lindquist
+
 let convert = await npm("color-convert")
 
 let createChoice = (type, value, input) => {
@@ -282,55 +240,11 @@ setSelectedText(conversion)
 ```
 
 
-### John's personal startup script for scriptkit.com
-
-```js
-// Menu: John's personal startup script for scriptkit.com
-// Description: This probably won't run on your machine 😜
-// Author: John Lindquist
-edit(`~/projects/scriptkit.com`)
-iterm(`cd ~/projects/scriptkit.com; vercel dev`)
-await focusTab("http://localhost:3000")
-
-```
-
-
-### Search for a File
-
-```js
-// Menu: Search for a File
-// Description: File Search
-// Author: John Lindquist
-/** Note: This is a very basic search implementation based on "mdfind".
- * File search will be a _big_ focus in future versions of Script Kit
- */
-
-let selectedFile = await arg(
-  "Search a file:",
-  async input => {
-    if (input?.length < 4) return []
-    let files = await fileSearch(input)
-
-    return files.map(path => {
-      return {
-        name: path.split("/").pop(),
-        description: path,
-        value: path,
-      }
-    })
-  }
-)
-
-exec(`open ${selectedFile}`)
-
-```
-
-
 ### focus-twitter
 
 ```js
 // Description: Launch Twitter in Chrome. If Twitter is already open, switch to that tab.
-// Author: John Lindquist// Shortcut: opt t
+// Shortcut: opt t
 
 //runs the "chrome-tab" script with twitter.com passed into the first `arg`
 await run("chrome-tab", "twitter.com")
@@ -343,7 +257,7 @@ await run("chrome-tab", "twitter.com")
 ```js
 // Menu: Giphy
 // Description: Search giphy. Paste link.
-// Author: John Lindquist
+
 let download = await npm("image-downloader")
 let queryString = await npm("query-string")
 
@@ -403,7 +317,7 @@ setSelectedText(formattedLink)
 ```js
 // Menu: Gist from Finder
 // Description: Select a file in Finder, then create a Gist
-// Author: John Lindquist
+
 let filePath = await getSelectedFile()
 let file = filePath.split("/").pop()
 
@@ -448,7 +362,7 @@ exec(`open ` + response.data.html_url)
 ```js
 // Menu: Google Image Grid
 // Description: Create a Grid of Images
-// Author: John Lindquist
+
 let gis = await npm("g-i-s")
 
 await arg("Search for images:", async input => {
@@ -473,7 +387,7 @@ await arg("Search for images:", async input => {
 ```js
 // Menu: Hello World
 // Description: Enter an name, speak it back
-// Author: John Lindquist
+
 let name = await arg(`What's your name?`)
 say(`Hello, ${name}!`)
 
@@ -485,7 +399,7 @@ say(`Hello, ${name}!`)
 ```js
 // Menu: Detect Image Width and Height
 // Description: Show the metadata of an image
-// Author: John Lindquist
+
 let sharp = await npm("sharp")
 
 let image = await arg("Search an image:", async input => {
@@ -514,7 +428,7 @@ await arg(`Width: ${width} Height: ${height}`)
 ```js
 // Menu: Resize an Image
 // Description: Select an image in Finder. Type option + i to resize it.
-// Author: John Lindquist// Shortcut: opt i
+// Shortcut: opt i
 
 let sharp = await npm("sharp")
 
@@ -546,7 +460,7 @@ await sharp(imagePath)
 ```js
 // Menu: Dad Joke
 // Description: Logs out a Dad Joke from icanhazdadjoke.com
-// Author: John Lindquist
+
 let response = await get(`https://icanhazdadjoke.com/`, {
   headers: {
     Accept: "text/plain",
@@ -565,7 +479,7 @@ say(joke)
 ```js
 // Menu: New Journal Entry
 // Description: Generate a file using the current date in a specified folder
-// Author: John Lindquistlet { format } = await npm("date-fns")
+let { format } = await npm("date-fns")
 
 let date = format(new Date(), "yyyy-MM-dd")
 
@@ -590,7 +504,7 @@ edit(journalFile, env?.JOURNAL_PATH)
 ```js
 // Menu: Open Project
 // Description: List dev projects
-// Author: John Lindquist
+
 let { projects, write } = await db("projects", {
   projects: [
     "~/.kit",
@@ -634,7 +548,7 @@ onTab("Remove", async () => {
 ```js
 // Menu: Paste URL
 // Description: Copy the current URL from your browser. Paste it at cursor.
-// Author: John Lindquist
+
 let url = await getActiveTab()
 await setSelectedText(url)
 
@@ -646,7 +560,7 @@ await setSelectedText(url)
 ```js
 // Menu: Project Name
 // Description: Generate an alliteraive, dashed project name, copies it to the clipboard, and shows a notification
-// Author: John Lindquist
+
 let { generate } = await npm("project-name-generator")
 
 const name = generate({
@@ -664,7 +578,7 @@ await setSelectedText(name)
 ```js
 // Menu: Quick Thoughts
 // Description: Add lines to today's journal page
-// Author: John Lindquist
+
 let { format } = await npm("date-fns")
 
 let date = format(new Date(), "yyyy-MM-dd")
@@ -718,7 +632,7 @@ while (true) {
 ```js
 // Menu: Read News
 // Description: Scrape headlines from news.google.com then pick headline to read
-// Author: John Lindquist
+
 let headlines = await scrapeSelector(
   "https://news.google.com",
   "h3",
@@ -740,7 +654,7 @@ exec(`open "${url}"`)
 ```js
 // Menu: Reddit
 // Description: Browse Reddit from Script Kit
-// Author: John Lindquist
+
 let Reddit = await npm("reddit")
 
 let envOptions = {
@@ -817,7 +731,7 @@ subreddits.forEach(sub => {
 ```js
 // Menu: Share Selected File
 // Description: Select a file in Finder. Creates tunnel and copies link to clipboard.
-// Author: John Lindquist// Background: true
+// Background: true
 
 let ngrok = await npm("ngrok")
 let handler = await npm("serve-handler")
@@ -867,7 +781,7 @@ exitHook(() => {
 ```js
 // Menu: Open Sound Prefs
 // Description: Open the Sound prefs panel
-// Author: John Lindquist
+
 exec(`open /System/Library/PreferencePanes/Sound.prefPane`)
 
 ```
@@ -878,7 +792,7 @@ exec(`open /System/Library/PreferencePanes/Sound.prefPane`)
 ```js
 // Menu: Speak Script
 // Description: Run a Script based on Speech Input
-// Author: John Lindquist
+
 let { scripts } = await db("scripts")
 
 let escapedScripts = scripts.map(script => ({
@@ -910,7 +824,7 @@ await run(script.value)
 ```js
 // Menu: Speed Reader
 // Description: Display clipboard content at a defined rate
-// Author: John Lindquist
+
 let wpm = 1000 * (60 / (await arg('Enter words per minute:')))
 
 let text = await paste()
@@ -926,5 +840,124 @@ let id = setInterval(() => {
   setPlaceholder(` ${text[i++]}`)
   if (i >= text.length) clearInterval(id)
 }, wpm)
+
+```
+
+
+### Synonym
+
+```js
+// Menu: Synonym
+// Description: List synonyms
+
+let synonym = await arg("Type a word", async input => {
+  if (!input || input?.length < 3) return []
+  let url = `https://api.datamuse.com/words?ml=${input}&md=d`
+  let response = await get(url)
+
+  return response.data.map(({ word, defs }) => {
+    return {
+      name: `${word}${defs?.[0] && ` - ${defs[0]}`}`,
+      value: word,
+      selected: `Paste ${word}`,
+    }
+  })
+})
+
+setSelectedText(synonym)
+
+```
+
+
+### Title Case
+
+```js
+// Menu: Title Case
+// Description: Converts the selected text to title case
+
+let { titleCase } = await npm("title-case")
+
+let text = await getSelectedText()
+let titleText = titleCase(text)
+await setSelectedText(titleText)
+
+```
+
+
+### Update Twitter Name
+
+```js
+// Menu: Update Twitter Name
+// Description: Change your name on twitter
+
+let Twitter = await npm('twitter-lite')
+
+let envOptions = {
+  hint: md(
+    `You need to [create an app](https://developer.twitter.com/en/apps) to get these keys/tokens`,
+  ),
+  ignoreBlur: true,
+  secret: true,
+}
+
+let client = new Twitter({
+  consumer_key: await env('TWITTER_CONSUMER_KEY', envOptions),
+  consumer_secret: await env('TWITTER_CONSUMER_SECRET', envOptions),
+  access_token_key: await env('TWITTER_ACCESS_TOKEN_KEY', envOptions),
+  access_token_secret: await env('TWITTER_ACCESS_TOKEN_SECRET', envOptions),
+})
+
+let name = await arg('Enter new twitter name:')
+
+let response = await client
+  .post('account/update_profile', {
+    name,
+  })
+  .catch((error) => console.log(error))
+
+```
+
+
+### Vocab Quiz
+
+```js
+// Menu: Vocab Quiz
+// Description: Quiz on random vocab words
+
+await npm("wordnet-db")
+let randomWord = await npm("random-word")
+let { WordNet } = await npm("natural")
+
+let wordNet = new WordNet()
+let words = []
+
+while (true) {
+  setPlaceholder(`Finding random word and definitions...`)
+
+  while (words.length < 4) {
+    let quizWord = randomWord()
+    let results = await new Promise(resolve => {
+      wordNet.lookup(quizWord, resolve)
+    })
+    if (results.length) {
+      let [{ lemma, def }] = results
+      words.push({ name: def, value: lemma })
+    }
+  }
+
+  let word = words[0]
+  let result = await arg(
+    `What does "${word.value}" mean?`,
+    _.shuffle(words)
+  )
+
+  let correct = word.value === result
+  setPlaceholder(
+    `${correct ? "✅" : "🚫"} ${word.value}: ${word.name}`
+  )
+  words = []
+
+  await wait(2000)
+}
 
 ```
