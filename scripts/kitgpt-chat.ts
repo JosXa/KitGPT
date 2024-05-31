@@ -58,7 +58,7 @@ await kitGpt({
 
       const runScript = new SubmitLinkEncoder(TOOL_RESULT_ACTION.RunGeneratedScript, { file: filePath, scriptName })
 
-      chat.appendLine(md(`**After your review**, I can add it to your kenv as <code>${filePath}<code>.`))
+      chat.send(md(`**After your review**, I can add it to your kenv as <code>${filePath}<code>.`))
 
       chat.appendLine(
         md(
