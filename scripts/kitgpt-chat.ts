@@ -53,9 +53,7 @@ await kitGpt({
       chat.send(md(`~~~${fileExtension.replace(".", "")}\n${script.replaceAll("~~~", "")}\n~~~`))
 
       const save = new SubmitLinkEncoder(TOOL_RESULT_ACTION.SaveGeneratedScript, { file: filePath })
-
       const openInEditor = new SubmitLinkEncoder(TOOL_RESULT_ACTION.OpenGeneratedScriptInEditor, { file: filePath })
-
       const runScript = new SubmitLinkEncoder(TOOL_RESULT_ACTION.RunGeneratedScript, { file: filePath, scriptName })
 
       chat.send(md(`**After your review**, I can add it to your kenv as <code>${filePath}<code>.`))
