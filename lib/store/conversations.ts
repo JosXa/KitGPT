@@ -5,6 +5,7 @@ import { messages } from "./messages"
 
 export const currentConversationId = signal<number | undefined>(undefined)
 export const currentConversationTitle = signal<string | undefined>(undefined)
+export const currentUnsentDraft = signal<"" | string>("")
 
 const isInserting = signal(false)
 effect(() => {

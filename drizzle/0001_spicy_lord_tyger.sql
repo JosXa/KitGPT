@@ -1,0 +1,1 @@
+ALTER TABLE `conversations` ADD `last_unsent_user_message` text;

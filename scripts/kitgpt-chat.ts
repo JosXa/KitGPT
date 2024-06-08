@@ -7,11 +7,9 @@
 // Cache: false (custom metadata)
 
 import "@johnlindquist/kit"
-import { writeFile } from "node:fs/promises"
 import { z } from "zod"
-import { generateKitScript, kitGpt, kitGptTool } from ".."
-import { TOOL_RESULT_ACTION } from "../lib/screens/ChatScreen"
-import { lastGeneratedScriptContent } from "../lib/store/script-generator"
+import { TOOL_RESULT_ACTION, generateKitScript, kitGpt, kitGptTool } from ".."
+import { generateObjectWithSelectedModel } from "../lib/ai/generate"
 import SubmitLinkEncoder from "../lib/utils/SubmitLinkEncoder"
 
 await kitGpt({

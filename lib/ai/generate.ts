@@ -1,4 +1,4 @@
-import { generateText, streamText } from "ai"
+import { generateObject, generateText, streamText } from "ai"
 import SwitchModelScreen from "../screens/SwitchModelScreen"
 import { currentModel, systemPrompt } from "../store/settings"
 
@@ -34,5 +34,21 @@ export async function generateTextWithSelectedModel(
   return await generateText({
     model,
     ...generateTextArgs,
+  })
+}
+
+export async function generateObjectWithSelectedModel(
+  generateObjectArgs: Omit<Parameters<typeof generateObject>[0], "model">,
+) {
+  const model = await ensureModelSelected()
+
+  if (generateObjectArgs.system === undefined) {
+    generateObjectArgs.system = systemPrompt.value
+  }
+
+  return await generateObject({
+    model,
+    mode: "json",
+    ...generateObjectArgs,
   })
 }

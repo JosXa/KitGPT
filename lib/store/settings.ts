@@ -14,6 +14,8 @@ export const currentModel = signal<undefined | Awaited<ReturnType<typeof getMode
 export const systemPrompt = signal(settingsDb.systemPrompt)
 export const welcomeShown = signal(settingsDb.welcomeShown)
 
+export const chatMode = signal<"chat" | "editor">(settingsDb.chatMode)
+
 export const userDefinedTools = signal<Record<string, KitGptTool>>({})
 
 export const aiTools = computed(() =>
