@@ -19,6 +19,7 @@ export const conversations = sqliteTable("conversations", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   title: text("name"),
   messages: customJsonb<CoreMessage[]>("messages"),
+  lastUnsentUserMessage: text("last_unsent_user_message"),
   started: text("timestamp").default(sql`(CURRENT_TIMESTAMP)`),
   lastAccessed: text("timestamp").default(sql`(CURRENT_TIMESTAMP)`),
 })

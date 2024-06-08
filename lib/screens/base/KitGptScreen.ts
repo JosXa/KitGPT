@@ -1,4 +1,4 @@
-import { refreshable } from "@josxa/kit-utils"
+import { type FORCE_REFRESH, refreshable } from "@josxa/kit-utils"
 import type { RefreshableControls } from "@josxa/kit-utils"
 
 import { activeScreen } from "../../store"
@@ -6,7 +6,7 @@ import { activeScreen } from "../../store"
 export abstract class KitGptScreen<T> {
   protected abstract name: string
 
-  protected abstract render(controls: RefreshableControls<T>): Promise<T>
+  protected abstract render(controls: RefreshableControls<T>): Promise<T | typeof FORCE_REFRESH>
 
   /**
    * Wraps around the given render function to update the state which screen is currently active
@@ -17,6 +17,7 @@ export abstract class KitGptScreen<T> {
       activeScreen.value = this.name
       return this.render(controls)
     })
+
     activeScreen.value = undefined
     return result
   }

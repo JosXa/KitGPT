@@ -15,7 +15,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 
 const focuseChoiceId = signal<string | undefined>(undefined)
 
-const openDrizzleStudio = async (signal: AbortSignal) => {
+const openDrizzleStudio = async () => {
   const projectRoot = path.join(__dirname, "..")
   await term({ command: "npm run db:studio", cwd: projectRoot })
 }

@@ -5,7 +5,7 @@ import { primaryHighlight } from "../utils/string-utils"
 import { KitGptScreen } from "./base/KitGptScreen"
 
 export default class WelcomeScreen extends KitGptScreen<void> {
-  name = "Welcome"
+  name = "welcome"
 
   async render() {
     await div({

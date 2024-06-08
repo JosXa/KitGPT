@@ -1,6 +1,7 @@
 import fs from "node:fs/promises"
 import { dirname } from "node:path"
 import { fileURLToPath } from "node:url"
+import { startSpinner } from "@josxa/kit-utils"
 import Database from "better-sqlite3"
 import { drizzle } from "drizzle-orm/better-sqlite3"
 import { migrate } from "drizzle-orm/better-sqlite3/migrator"
@@ -21,7 +22,11 @@ async function testConnection() {
   }
 }
 
-const migrateDb = () => migrate(kitGptDb, { migrationsFolder: path.join(__dirname, "../drizzle") })
+const migrateDb = () => {
+  const spinner = startSpinner("circle", { initialMessage: "Migrating database..." })
+  migrate(kitGptDb, { migrationsFolder: path.join(__dirname, "../drizzle") })
+  spinner.stop()
+}
 
 export async function ensureDbInitialized(onCorrupted: (info: { backupPath: string }) => Promise<void>) {
   if (!(await testConnection())) {
