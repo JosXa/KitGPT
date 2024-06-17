@@ -110,7 +110,6 @@ export default class EditorChatScreen extends AbstractChatScreen<void> {
     this.inputControlled.value = true
     this.waitingForResponseToBegin.value = true
     parseAndUpdateMessages(this.currentInput.value.trim())
-    // precedingConversationContent.value = formatConversationAsText()
   }
 
   override *initEffects() {
@@ -126,7 +125,6 @@ export default class EditorChatScreen extends AbstractChatScreen<void> {
       } else {
         const text = formatConversationAsText()
         precedingConversationContent.value = text + (text.trim() === "" ? "" : "\n\n👤 ")
-        console.log({ newInput: precedingConversationContent.value })
         setInput(untracked(() => precedingConversationContent.value))
       }
     })
@@ -176,7 +174,7 @@ export default class EditorChatScreen extends AbstractChatScreen<void> {
       input: formatConversationAsText() + currentUnsentDraft.value,
       onInput(content) {
         if (isFirstOnInput) {
-          // TODO: Necessary due to bug https://discord.com/channels/804053880266686464/1149451928556814366/1248794856973799508
+          // Necessary due to bug: https://discord.com/channels/804053880266686464/1149451928556814366/1248794856973799508
           isFirstOnInput = false
           return
         }
@@ -189,8 +187,6 @@ export default class EditorChatScreen extends AbstractChatScreen<void> {
         const sanitized = content?.replaceAll("\r\n", "\n") ?? ""
 
         const { conversationContent, userDraft } = fastSplitConversationFromUserDraft(sanitized)
-
-        console.log({ conversationContent, userDraft })
 
         batch(() => {
           precedingConversationContent.value = conversationContent
