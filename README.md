@@ -26,3 +26,4 @@ Gives you a ChatGPT-like interface directly in [Script Kit](https://scriptkit.co
   - [ ] Selecting parts of text to copy
   - [ ] reading from `pass`/flags/clipboard
 - [ ] Multiple custom prompts and ability to select them on startup
+- [ ] Pipelines / Automations for piping AI responses and modeling workflows like train of thought

@@ -1,5 +1,6 @@
 import type { Shortcut } from "@johnlindquist/kit/types"
 import type { FORCE_REFRESH } from "@josxa/kit-utils"
+import { SHORTCUTS } from "../../settings"
 import { resetConversation } from "../../store/conversations"
 import { messages } from "../../store/messages"
 import { chatMode } from "../../store/settings"
@@ -10,38 +11,31 @@ import SwitchModelScreen from "../SwitchModelScreen"
 export function buildChatShortcuts(refresh: () => typeof FORCE_REFRESH): Shortcut[] {
   const res: Shortcut[] = [
     {
-      name: "Close",
-      key: `${cmd}+w`,
+      ...SHORTCUTS.close,
       onPress: () => exit(),
-      bar: "left",
     },
   ]
 
   if (messages.length > 0) {
     res.push({
-      name: "New",
-      key: `${cmd}+n`,
+      ...SHORTCUTS.newConversation,
       onPress: () => {
         resetConversation()
         refresh()
       },
-      bar: "left",
     })
   }
 
   res.push({
-    name: "History",
-    key: `${cmd}+h`,
+    ...SHORTCUTS.history,
     onPress: async () => {
       await new ConversationHistoryScreen().run()
       refresh()
     },
-    bar: "left",
   })
 
   res.push({
-    name: chatMode.value === "chat" ? "Editor" : "Chat",
-    key: `${cmd}+e`,
+    ...(chatMode.value === "chat" ? SHORTCUTS.switchToEditor : SHORTCUTS.switchToChat),
     onPress: async () => {
       // TODO: Clean this up
       if (chatMode.value === "chat") {
@@ -55,30 +49,22 @@ export function buildChatShortcuts(refresh: () => typeof FORCE_REFRESH): Shortcu
       }
       // TODO: Resolve
     },
-    bar: "left",
   })
 
   res.push({
-    id: "model",
-    name: "Model",
-    key: `${cmd}+m`,
+    ...SHORTCUTS.changeModel,
     onPress: async () => {
       await new SwitchModelScreen().run()
       refresh()
     },
-    bar: "right",
-    visible: true,
   })
 
   res.push({
-    name: "Options",
-    key: `${cmd}+o`,
+    ...SHORTCUTS.options,
     onPress: async () => {
       await new OptionsScreen().run()
       refresh()
     },
-    bar: "right",
-    visible: true,
   })
 
   return res

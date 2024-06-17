@@ -961,3 +961,23 @@ while (true) {
 }
 
 ```
+### Send a notification with actions
+
+notifier.notify(
+  {
+    message: "Did something",
+    actions: ["Open", "Dismiss"],
+    timeout: NOTIFICATION_TIMEOUT_SECONDS,
+  },
+  async (err, action) => {
+    // action comes back as lowercase
+    switch (action) {
+      case "open":
+        // do something
+        break;
+      case "dismiss":
+      default:
+        // do nothing
+    }
+  },
+)

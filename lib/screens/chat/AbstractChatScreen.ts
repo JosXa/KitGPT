@@ -189,6 +189,7 @@ export default abstract class AbstractChatScreen<T> extends KitGptScreen<T> {
         abortSignal.addEventListener("abort", () => {
           effectHandles.forEach((fn) => fn())
           navigationEffectHandle()
+          console.log(`cleaned up ${self.name}`)
         })
 
         if (!currentModel.value) {
