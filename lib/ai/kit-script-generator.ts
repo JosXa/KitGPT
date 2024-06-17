@@ -34,6 +34,7 @@ Please follow these instructions:
 - console.log statements are discouraged
 - Use \`node:\` import prefixes where applicable (e.g. node:fs/promises, node:path, ...)
 - Axios is builtin. If you need to make an http call, just do \`await get(...)\` or \`await post(...)\`
+- The 'open' npm package is also available in the global scope.
 - Add verbose comments to the script to help the user fully understand what every step is doing
 - When working with GitHub, prefer the octokit/rest library 
 `

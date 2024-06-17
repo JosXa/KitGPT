@@ -1,6 +1,6 @@
 import type { Shortcut } from "@johnlindquist/kit/types"
 import type { RefreshableControls } from "@josxa/kit-utils"
-import { type Signal, batch, computed, effect, signal } from "@preact/signals-core"
+import { type Signal, batch, computed, effect, signal, untracked } from "@preact/signals-core"
 import type { CoreMessage } from "ai"
 import { currentUnsentDraft } from "../../store/conversations"
 import { messages } from "../../store/messages"
@@ -19,14 +19,7 @@ function formatConversationAsText() {
     }
   }
 
-  let result = parts.join("\n\n")
-
-  // Append user input if last message is from assistant
-  if (messages[messages.length - 1]?.role === "assistant") {
-    result += "\n\n👤 "
-  }
-
-  return result
+  return parts.join("\n\n")
 }
 
 function parseAndUpdateMessages(editorContent: string) {
@@ -108,35 +101,49 @@ function fastSplitConversationFromUserDraft(editorContent: string) {
 export default class EditorChatScreen extends AbstractChatScreen<void> {
   protected name = "editor"
 
-  private waitingForResponse = signal(false)
+  private waitingForResponseToBegin = signal(false)
   private currentInput: Signal<string> = computed(() => precedingConversationContent.value + currentUnsentDraft.value)
 
+  private inputControlled = signal(false)
+
   private commit() {
-    this.waitingForResponse.value = true
+    this.inputControlled.value = true
+    this.waitingForResponseToBegin.value = true
     parseAndUpdateMessages(this.currentInput.value.trim())
-    precedingConversationContent.value = formatConversationAsText()
+    // precedingConversationContent.value = formatConversationAsText()
   }
 
   override *initEffects() {
-    effect(() => {
+    yield effect(() => {
+      if (this.inputControlled.value) {
+        if (this.waitingForResponseToBegin.value) {
+          precedingConversationContent.value = formatConversationAsText() + AI_RESPONDING_INDICATOR
+          setInput(precedingConversationContent.value)
+        } else {
+          precedingConversationContent.value = formatConversationAsText()
+          setInput(precedingConversationContent.value)
+        }
+      } else {
+        const text = formatConversationAsText()
+        precedingConversationContent.value = text + (text.trim() === "" ? "" : "\n\n👤 ")
+        console.log({ newInput: precedingConversationContent.value })
+        setInput(untracked(() => precedingConversationContent.value))
+      }
+    })
+
+    yield effect(() => {
       const lastMsg = messages[messages.length - 1]
       if (!lastMsg) {
         return
       }
 
-      if (lastMsg.role === "assistant" && !this.isResponseInProgress.value) {
-        this.waitingForResponse.value = false
-        precedingConversationContent.value = formatConversationAsText()
-      } /* TODO else if (lastMsg.role === "user") {
-        this.waitingForResponse.value = true
-      }*/
-    })
+      if (lastMsg.role === "assistant") {
+        this.waitingForResponseToBegin.value = false
 
-    yield effect(() => {
-      if (this.waitingForResponse.value) {
-        setInput(this.currentInput.value.trim() + AI_RESPONDING_INDICATOR).then()
-      } else {
-        setInput(this.currentInput.value).then()
+        if (!this.isResponseInProgress.value) {
+          this.inputControlled.value = false
+          precedingConversationContent.value = formatConversationAsText()
+        }
       }
     })
 
@@ -163,6 +170,8 @@ export default class EditorChatScreen extends AbstractChatScreen<void> {
 
     await editor({
       ...config,
+      suggestions: [],
+      codeLens: false,
       scrollTo: "bottom",
       input: formatConversationAsText() + currentUnsentDraft.value,
       onInput(content) {
@@ -172,14 +181,16 @@ export default class EditorChatScreen extends AbstractChatScreen<void> {
           return
         }
 
-        if (self.waitingForResponse.value) {
-          // Ignore inputs while waiting for response
+        if (self.inputControlled.value) {
+          // Ignore changes
           return
         }
 
         const sanitized = content?.replaceAll("\r\n", "\n") ?? ""
 
         const { conversationContent, userDraft } = fastSplitConversationFromUserDraft(sanitized)
+
+        console.log({ conversationContent, userDraft })
 
         batch(() => {
           precedingConversationContent.value = conversationContent
