@@ -19,7 +19,6 @@ export abstract class KitGptScreen<T> {
     })
 
     activeScreen.value = undefined
-    console.log("switched screen")
     return result
   }
 }
