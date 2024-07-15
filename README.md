@@ -4,7 +4,7 @@ Gives you a ChatGPT-like interface directly in [Script Kit](https://scriptkit.co
 
 ## Installation
 
-1. Direct link: https://scriptkit.com/api/kenv?repo=JosXa/kit-utils
+1. Direct link: https://scriptkit.com/api/kenv?repo=JosXa/KITGPT
 2. Accept the risks and install
 
 ## Features
