@@ -9,7 +9,8 @@ import { typedObjectValues } from "../utils/typed-objects"
 export const PROVIDERS = {
   "openai.chat": {
     name: "OpenAI",
-    getModel: async (modelId: string) => (await import("@ai-sdk/openai")).openai(modelId),
+    getModel: async (modelId: string, baseUrl?: string) =>
+      (await import("@ai-sdk/openai")).createOpenAI({ compatibility: "strict", baseUrl })(modelId),
     // Keep in sync with https://github.com/vercel/ai/blob/main/packages/openai/src/openai-chat-settings.ts
     knownModels: [
       "gpt-4o",

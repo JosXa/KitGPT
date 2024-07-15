@@ -9,7 +9,6 @@
 import "@johnlindquist/kit"
 import { z } from "zod"
 import { TOOL_RESULT_ACTION, generateKitScript, generateTextWithSelectedModel, kitGpt, kitGptTool } from ".."
-import { generateObjectWithSelectedModel } from "../lib/ai/generate"
 import SubmitLinkEncoder from "../lib/utils/SubmitLinkEncoder"
 
 await kitGpt({
