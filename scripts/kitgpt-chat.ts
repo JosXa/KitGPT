@@ -24,7 +24,6 @@ await kitGpt({
   //     chat.send(`The weather in ${location} is ${temperature}°F`)
   //   },
   // }),
-
   // kitScriptGenerator: kitGptTool({
   //   description: "Generate a Kit script (write a Script Kit script)",
   //   displayText: "Generating a Kit script",
@@ -66,24 +65,23 @@ await kitGpt({
   //     )
   //   },
   // }),
-
-  linkBuilder: kitGptTool({
-    description: "Insert/Add hyperlinks, google terms",
-    parameters: z.object({
-      text: z
-        .string()
-        .describe("The message where important words, terms, and brands ought to be turned into clickable hyperlinks"),
-    }),
-    async execute(chat, { text }) {
-      const res = await generateTextWithSelectedModel({
-        system:
-          "Surround all words, terms and brands that would benefit from clickable hyperlinks with links in markdown syntax. " +
-          "If you are sure about a URL (e.g. because it's short like `https://telegram.org`), just use that URL. Otherwise, " +
-          "use either a google search URL https://www.google.com/search?q=TERM or a Wikipedia one in the correct language " +
-          "(e.g. English https://en.wikipedia.org/wiki/TERM or German https://de.wikipedia.org/wiki/TERM).",
-        prompt: text,
-      })
-      chat.send(res.text)
-    },
-  }),
+  // linkBuilder: kitGptTool({
+  //   description: "Insert/Add hyperlinks, google terms",
+  //   parameters: z.object({
+  //     text: z
+  //       .string()
+  //       .describe("The message where important words, terms, and brands ought to be turned into clickable hyperlinks"),
+  //   }),
+  //   async execute(chat, { text }) {
+  //     const res = await generateTextWithSelectedModel({
+  //       system:
+  //         "Surround all words, terms and brands that would benefit from clickable hyperlinks with links in markdown syntax. " +
+  //         "If you are sure about a URL (e.g. because it's short like `https://telegram.org`), just use that URL. Otherwise, " +
+  //         "use either a google search URL https://www.google.com/search?q=TERM or a Wikipedia one in the correct language " +
+  //         "(e.g. English https://en.wikipedia.org/wiki/TERM or German https://de.wikipedia.org/wiki/TERM).",
+  //       prompt: text,
+  //     })
+  //     chat.send(res.text)
+  //   },
+  // }),
 })

@@ -1,6 +1,6 @@
 import type { CoreMessage } from "ai"
 import { sql } from "drizzle-orm"
-import { customType, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core"
+import { customType, integer, sqliteTable, text } from "drizzle-orm/sqlite-core"
 
 const customJsonb = <TData>(name: string) =>
   customType<{ data: TData; driverData: string }>({
