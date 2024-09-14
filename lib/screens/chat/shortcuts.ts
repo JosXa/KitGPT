@@ -5,8 +5,8 @@ import { resetConversation } from "../../store/conversations"
 import { messages } from "../../store/messages"
 import { chatMode } from "../../store/settings"
 import ConversationHistoryScreen from "../ConversationHistoryScreen"
-import OptionsScreen from "../OptionsScreen"
-import SwitchModelScreen from "../SwitchModelScreen"
+import OptionsScreen from "../options/OptionsScreen"
+import SwitchModelScreen from "../options/SwitchModelScreen"
 
 export function buildChatShortcuts(refresh: () => typeof FORCE_REFRESH): Shortcut[] {
   const res: Shortcut[] = [

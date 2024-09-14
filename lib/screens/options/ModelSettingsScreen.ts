@@ -1,5 +1,5 @@
 import type { RefreshableControls } from "@josxa/kit-utils"
-import { KitGptScreen } from "./base/KitGptScreen"
+import { KitGptScreen } from "../base/KitGptScreen"
 
 // TODO: Implement (temperature, tokens, etc.)
 export default class ModelSettingsScreen extends KitGptScreen<void> {

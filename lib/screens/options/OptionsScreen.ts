@@ -3,13 +3,13 @@ import { fileURLToPath } from "node:url"
 import type { Choice } from "@johnlindquist/kit/types"
 import { type RefreshableControls, showError } from "@josxa/kit-utils"
 import { signal } from "@preact/signals-core"
-import { type Provider, getProviderOrThrow } from "../ai/models"
-import { PROMPT_WIDTH } from "../settings"
-import { currentModel } from "../store/settings"
+import { type Provider, getProviderOrThrow } from "../../ai/models"
+import { PROMPT_WIDTH } from "../../settings"
+import { currentModel } from "../../store/settings"
+import { KitGptScreen } from "../base/KitGptScreen"
 import ConfigureSystemPromptScreen from "./ConfigureSystemPromptScreen"
 import ModelSettingsScreen from "./ModelSettingsScreen"
 import SwitchModelScreen from "./SwitchModelScreen"
-import { KitGptScreen } from "./base/KitGptScreen"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 

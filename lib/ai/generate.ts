@@ -1,5 +1,5 @@
 import { generateObject, generateText, streamText } from "ai"
-import SwitchModelScreen from "../screens/SwitchModelScreen"
+import SwitchModelScreen from "../screens/options/SwitchModelScreen"
 import { currentModel, systemPrompt } from "../store/settings"
 
 const ensureModelSelected = async () => {

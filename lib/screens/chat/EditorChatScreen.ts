@@ -164,8 +164,9 @@ export default class EditorChatScreen extends AbstractChatScreen<void> {
     const self = this
     const config = this.buildPromptConfig(refreshableControls)
 
-    let isFirstOnInput = true
+    let firstTimeInput = true
 
+    //@ts-expect-error Kit typings bug
     await editor({
       ...config,
       suggestions: [],
@@ -173,9 +174,9 @@ export default class EditorChatScreen extends AbstractChatScreen<void> {
       scrollTo: "bottom",
       input: formatConversationAsText() + currentUnsentDraft.value,
       onInput(content) {
-        if (isFirstOnInput) {
+        if (firstTimeInput) {
           // Necessary due to bug: https://discord.com/channels/804053880266686464/1149451928556814366/1248794856973799508
-          isFirstOnInput = false
+          firstTimeInput = false
           return
         }
 
