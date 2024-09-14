@@ -153,7 +153,10 @@ export default abstract class AbstractChatScreen<T> extends KitGptScreen<T> {
 
   protected isResponseInProgress = computed(() => currentResponseStream.value !== null)
 
-  protected buildPromptConfig({ refresh, signal: abortSignal }: RefreshableControls<T>): PromptConfig {
+  protected buildPromptConfig(
+    { refresh, signal: abortSignal }: RefreshableControls<T>,
+    { afterInit }: { afterInit?: () => Promise<void> } = {},
+  ): PromptConfig {
     const self = this
     refreshHandle.value = refresh
 
@@ -161,6 +164,12 @@ export default abstract class AbstractChatScreen<T> extends KitGptScreen<T> {
 
     return {
       async onInit() {
+        if (!currentModel.value) {
+          await new SwitchModelScreen().run()
+          refresh()
+          return
+        }
+
         const effectHandles = [
           effect(() => setShortcuts(finalShortcuts.value)),
           effect(() => {
@@ -191,10 +200,7 @@ export default abstract class AbstractChatScreen<T> extends KitGptScreen<T> {
           navigationEffectHandle()
         })
 
-        if (!currentModel.value) {
-          await new SwitchModelScreen().run()
-          refresh()
-        }
+        await afterInit?.()
       },
       width: PROMPT_WIDTH,
       height: CHAT_WINDOW_HEIGHT,

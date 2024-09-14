@@ -72,15 +72,13 @@ export default class ChatScreen extends AbstractChatScreen<Message[]> {
       prevLength.value = newLength
     })
 
-    yield effect(() => setInput(currentUnsentDraft.value))
-
     yield subscribeToMessageEdits((msgSignal, idx) => chat.setMessage?.(idx, buildKitMessage(msgSignal)))
   }
 
   async render(refreshableControls: RefreshableControls<Message[]>) {
     const { refresh } = refreshableControls
 
-    const config = this.buildPromptConfig(refreshableControls)
+    const config = this.buildPromptConfig(refreshableControls, { afterInit: () => setInput(currentUnsentDraft.value) })
     const result = (await chat({
       ...config,
       input: currentUnsentDraft.value,

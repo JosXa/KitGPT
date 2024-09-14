@@ -7,6 +7,7 @@ import { messages } from "../../store/messages"
 import AbstractChatScreen from "./AbstractChatScreen"
 
 const AI_RESPONDING_INDICATOR = "\n\n🤖 "
+const MESSAGE_TERMINATOR = "\n\n"
 
 function formatConversationAsText() {
   const parts: string[] = []
@@ -145,7 +146,7 @@ export default class EditorChatScreen extends AbstractChatScreen<void> {
       }
     })
 
-    yield currentUnsentDraft.subscribe((val) => val.endsWith("\n\n") && this.commit())
+    yield currentUnsentDraft.subscribe((val) => val.endsWith(MESSAGE_TERMINATOR) && this.commit())
   }
 
   override getExtraShortcuts(): Shortcut[] {
@@ -162,7 +163,9 @@ export default class EditorChatScreen extends AbstractChatScreen<void> {
 
   async render(refreshableControls: RefreshableControls<void>) {
     const self = this
-    const config = this.buildPromptConfig(refreshableControls)
+    const config = this.buildPromptConfig(refreshableControls, {
+      afterInit: () => setInput(currentUnsentDraft.value),
+    })
 
     let firstTimeInput = true
 
