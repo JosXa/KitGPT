@@ -95,7 +95,7 @@ export default class ChatScreen extends AbstractChatScreen<Message[]> {
 
       const writeLastGeneratedScript = async (filePath: string) => {
         if (!lastGeneratedScriptContent.value) {
-          throw Error("No script contents found!")
+          throw new Error("No script contents found!")
         }
         await writeFile(filePath, lastGeneratedScriptContent.value, "utf-8")
       }

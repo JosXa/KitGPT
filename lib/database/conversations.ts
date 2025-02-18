@@ -25,7 +25,7 @@ export const deleteConversation = (id: number) =>
 export async function getFullConversation(id: number) {
   const res = await kitGptDb.select().from(conversations).where(eq(conversations.id, id)).limit(1)
   if (!res[0]) {
-    throw Error(`Conversation with id ${id} does not exist.`)
+    throw new Error(`Conversation with id ${id} does not exist.`)
   }
   return res[0]
 }

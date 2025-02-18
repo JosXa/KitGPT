@@ -56,7 +56,7 @@ async function streamResponse() {
     })
 
     // Insert new message into the deep signal and get out a reactive version
-    let generatingMessage: CoreMessage | undefined = undefined
+    let generatingMessage: CoreMessage | undefined
 
     for await (const chunk of result.fullStream) {
       if (chunk.type === "text-delta") {

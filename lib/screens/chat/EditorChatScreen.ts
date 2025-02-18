@@ -26,7 +26,7 @@ function formatConversationAsText() {
 function parseAndUpdateMessages(editorContent: string) {
   const lines = editorContent.split("\n")
 
-  let speaker: "user" | "assistant" | undefined = undefined
+  let speaker: "user" | "assistant" | undefined
 
   const newMessages: CoreMessage[] = []
 
@@ -67,7 +67,7 @@ const precedingConversationContent = signal<string>("")
 function extractUserInput(editorContent: string): string | null {
   const linesReversed = editorContent.split("\n").toReversed()
 
-  let result: string | undefined = undefined
+  let result: string | undefined
   const prepend = (val: string) => (result === undefined ? val : `${val}\n${result}`)
 
   for (const line of linesReversed) {

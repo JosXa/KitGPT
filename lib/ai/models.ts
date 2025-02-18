@@ -129,7 +129,7 @@ export type Provider = keyof typeof PROVIDERS
 export const getProviderOrThrow = (provider: Provider) => {
   const res = PROVIDERS[provider]
   if (!res) {
-    throw Error(`Provider '${provider}' is not implemented`)
+    throw new Error(`Provider '${provider}' is not implemented`)
   }
   return res
 }

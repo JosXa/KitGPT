@@ -46,7 +46,7 @@ export async function generateKitScript({
 }: { name: string; requirements: string; typeScript?: boolean }) {
   const prompt = `Please create a script in ${
     typeScript ? "TypeScript" : "plain JavaScript"
-  } named "${name}" that meets the following requirements:\n${requirements}`
+  } named "${name}" that meets the following requirements:\n- Prettier default code style\n${requirements}`
 
   const system = await buildSystemPrompt()
 
@@ -62,7 +62,7 @@ function extractCodeInFences(text: string) {
   const res = /```(.*?)\n(.*?)\n```/gs.exec(text)
 
   if (!res?.[2]) {
-    throw Error(`Unable to extract code from AI response:\n${text}`)
+    throw new Error(`Unable to extract code from AI response:\n${text}`)
   }
   return res[2]
 }

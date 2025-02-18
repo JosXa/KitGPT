@@ -7,7 +7,6 @@ import WelcomeScreen from "./lib/screens/WelcomeScreen"
 import ChatScreen from "./lib/screens/chat/ChatScreen"
 import EditorChatScreen from "./lib/screens/chat/EditorChatScreen"
 import { chatMode, currentModel, systemPrompt, userDefinedTools, welcomeShown } from "./lib/store/settings"
-// biome-ignore lint/performance/noBarrelFile: Library entrypoint
 export { TOOL_RESULT_ACTION } from "./lib/screens/chat/ChatScreen"
 export { generateKitScript } from "./lib/ai/kit-script-generator"
 export { streamTextWithSelectedModel, generateTextWithSelectedModel } from "./lib/ai/generate"
